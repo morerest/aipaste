@@ -12,6 +12,7 @@ final class AppState: ObservableObject {
     private(set) var preferences: AppPreferences!
 
     let historyPanel = HistoryPanelController()
+    let preferencesWindow = PreferencesWindowController()
     private var menuBar: MenuBarController?
     private var hotKeys: HotKeyManager?
     private var bootstrapped = false
@@ -61,7 +62,10 @@ final class AppState: ObservableObject {
 
     func showHistory() { historyPanel.show() }
 
-    func showPreferences() { /* Task 7 */ }
+    func showPreferences() {
+        guard let preferences, let ignoreRules, let store else { return }
+        preferencesWindow.show(preferences: preferences, ignoreRules: ignoreRules, store: store)
+    }
 
     func quit() {
         monitor?.stop()
