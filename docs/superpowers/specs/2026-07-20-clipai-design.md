@@ -1,7 +1,7 @@
 # clipai Design Spec
 
 **Date:** 2026-07-20  
-**Status:** Draft for user review (brainstorming approved in conversation)  
+**Status:** Approved  
 **Project path:** `/Users/wangqd/restart/clipai`  
 **Stack:** Swift, native macOS, single-process modular menu-bar app (Approach A)
 
