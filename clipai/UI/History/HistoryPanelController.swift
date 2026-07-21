@@ -37,8 +37,8 @@ final class HistoryPanelController: NSObject {
                 model: model,
                 onClose: { [weak self] in self?.hide() },
                 onPasteAndClose: { [weak self] in
-                    model.pasteSelected()
-                    self?.hide()
+                    // Spec: hide panel first so ⌘V targets the previous app, not clipai.
+                    self?.pasteSelectedThenHide()
                 }
             )
             panel.contentViewController = NSHostingController(rootView: root)
@@ -53,11 +53,31 @@ final class HistoryPanelController: NSObject {
             )
             panel.setFrameOrigin(origin)
         }
-        panel?.orderFrontRegardless()
+        // Become key so search / Enter / Esc work without an extra click.
+        panel?.makeKeyAndOrderFront(nil)
     }
 
     func hide() {
         panel?.orderOut(nil)
+    }
+
+    /// Hide first, yield to the previous app, then paste (write + optional ⌘V).
+    private func pasteSelectedThenHide() {
+        guard let model else { return }
+        hide()
+        // Delay lets the previously focused app reclaim first responder before ⌘V.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            model.pasteSelected()
+            if let message = model.statusMessage, message.contains("Accessibility") {
+                // Keep guidance visible when auto-paste is unavailable.
+                let alert = NSAlert()
+                alert.messageText = "clipai"
+                alert.informativeText = message
+                alert.alertStyle = .informational
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+            }
+        }
     }
 
     func reloadIfVisible() {

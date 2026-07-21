@@ -62,7 +62,12 @@ final class PasteboardIngester {
     private func truncateText(_ text: String) -> String {
         let bytes = Data(text.utf8)
         guard bytes.count > AppConstants.maxTextUTF8Bytes else { return text }
-        let sliced = bytes.prefix(AppConstants.maxTextUTF8Bytes)
-        return String(data: Data(sliced), encoding: .utf8).map { $0 + "…" } ?? text
+        var end = AppConstants.maxTextUTF8Bytes
+        // Back up to a valid UTF-8 boundary so decoding cannot fail open.
+        while end > 0 && (bytes[end] & 0xC0) == 0x80 {
+            end -= 1
+        }
+        let sliced = bytes.prefix(end)
+        return (String(data: Data(sliced), encoding: .utf8) ?? String(text.prefix(end))) + "…"
     }
 }
