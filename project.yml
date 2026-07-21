@@ -1,0 +1,43 @@
+name: clipai
+options:
+  bundleIdPrefix: com.eden
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+targets:
+  clipai:
+    type: application
+    platform: macOS
+    sources:
+      - path: clipai
+        excludes:
+          - "**/*.md"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.eden.clipai
+        PRODUCT_NAME: clipai
+        INFOPLIST_FILE: clipai/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: clipai/Resources/clipai.entitlements
+        CODE_SIGN_STYLE: Automatic
+        COMBINE_HIDPI_IMAGES: YES
+        LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
+        ENABLE_HARDENED_RUNTIME: YES
+        GENERATE_INFOPLIST_FILE: NO
+    scheme:
+      testTargets:
+        - clipaiTests
+  clipaiTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: clipaiTests
+    dependencies:
+      - target: clipai
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.eden.clipai.tests
+        GENERATE_INFOPLIST_FILE: YES
