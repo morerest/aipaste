@@ -35,3 +35,6 @@ Package.resolved
 .idea/
 .vscode/
 *.code-workspace
+
+# Worktrees
+.worktrees/
