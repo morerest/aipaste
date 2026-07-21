@@ -14,7 +14,9 @@ struct ClipAIApp: App {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Wired in Task 6/7 (AppState). Keep empty until then.
         NSApp.setActivationPolicy(.accessory)
+        Task { @MainActor in
+            AppState.shared.bootstrap()
+        }
     }
 }
