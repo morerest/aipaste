@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8" />
+  <title>ai paste — Workbench Prototype A</title>
+  <style>
+    :root {
+      --bg: #c8cdd4;
+      --panel: rgba(246, 247, 249, 0.92);
+      --card: #ffffff;
+      --text: #1d1d1f;
+      --secondary: #6e6e73;
+      --tertiary: #aeaeb2;
+      --stroke: rgba(0, 0, 0, 0.08);
+      --accent: #007aff;
+      --orange: #ff9f0a;
+      --radius-panel: 22px;
+      --radius-card: 14px;
+      --shadow: 0 1px 2px rgba(0,0,0,0.06), 0 18px 40px rgba(0,0,0,0.14);
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 48px 32px 56px;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(1200px 500px at 50% 0%, #e8ebf0 0%, transparent 60%),
+        linear-gradient(180deg, #b8bec8 0%, #d5d9df 45%, #c5cad1 100%);
+    }
+    .label {
+      align-self: flex-start;
+      margin: 0 auto 16px;
+      width: min(1180px, 100%);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .label h1 {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: rgba(0,0,0,0.55);
+      text-transform: uppercase;
+    }
+    .label span {
+      font-size: 12px;
+      color: rgba(0,0,0,0.4);
+    }
+    .workbench {
+      width: min(1180px, 100%);
+      background: var(--panel);
+      backdrop-filter: blur(40px) saturate(1.4);
+      -webkit-backdrop-filter: blur(40px) saturate(1.4);
+      border-radius: var(--radius-panel);
+      box-shadow: var(--shadow);
+      border: 0.5px solid rgba(255,255,255,0.55);
+      padding: 14px 16px 18px;
+    }
+    /* Toolbar row 1 */
+    .toolbar {
+      display: grid;
+      grid-template-columns: 120px 1fr 120px;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--secondary);
+    }
+    .brand .mark {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      background: linear-gradient(135deg, #34d0e8, #5b7cfa 55%, #9b5de5);
+    }
+    .search {
+      justify-self: center;
+      width: min(440px, 100%);
+      height: 34px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.72);
+      border: 1.5px solid transparent;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.04), 0 0 0 3px rgba(91, 124, 250, 0.18);
+      border-color: rgba(91, 124, 250, 0.55);
+    }
+    .search .icon { color: var(--secondary); font-size: 13px; opacity: 0.7; }
+    .search input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      outline: none;
+    }
+    .search input::placeholder { color: var(--tertiary); font-weight: 400; }
+    .search .count {
+      font-size: 11px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--secondary);
+      background: rgba(0,0,0,0.06);
+      padding: 2px 7px;
+      border-radius: 999px;
+    }
+    .trailing {
+      justify-self: end;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .icon-btn {
+      width: 30px;
+      height: 26px;
+      border-radius: 8px;
+      border: 0.5px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.55);
+      display: grid;
+      place-items: center;
+      color: var(--secondary);
+      font-size: 13px;
+      cursor: default;
+    }
+    /* Filters row */
+    .filters {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding: 0 2px;
+    }
+    .segmented {
+      display: inline-flex;
+      padding: 2px;
+      border-radius: 9px;
+      background: rgba(0,0,0,0.06);
+      gap: 1px;
+    }
+    .segmented button {
+      border: none;
+      background: transparent;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--secondary);
+      padding: 5px 12px;
+      border-radius: 7px;
+      cursor: default;
+    }
+    .segmented button.on {
+      background: #fff;
+      color: var(--text);
+      font-weight: 600;
+      box-shadow: 0 0.5px 1px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .app-filter {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--secondary);
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.55);
+      border: 0.5px solid var(--stroke);
+    }
+    .app-filter strong { color: var(--text); font-weight: 600; }
+    .hint {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--tertiary);
+      font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+    /* Gallery */
+    .gallery {
+      display: flex;
+      gap: 12px;
+      overflow: hidden;
+      padding: 2px 2px 4px;
+    }
+    .card {
+      flex: 0 0 200px;
+      height: 188px;
+      background: var(--card);
+      border-radius: var(--radius-card);
+      border: 1.5px solid rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      padding: 11px 12px 10px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(0,122,255,0.25), 0 4px 14px rgba(0,122,255,0.12);
+    }
+    .card .body {
+      flex: 1;
+      font-size: 12.5px;
+      line-height: 1.4;
+      color: var(--text);
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 8;
+      -webkit-box-orient: vertical;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .card .body.mono {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 11px;
+    }
+    .card .thumb {
+      flex: 1;
+      border-radius: 10px;
+      background:
+        linear-gradient(160deg, #f2f4f8 0%, #e6e9ef 100%);
+      border: 0.5px solid rgba(0,0,0,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+    .card .thumb .fake-ui {
+      width: 72%;
+      height: 86%;
+      background: #fff;
+      border-radius: 6px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      border: 0.5px solid rgba(0,0,0,0.06);
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .fake-ui .bar { height: 5px; border-radius: 2px; background: #e8eaef; }
+    .fake-ui .bar.w60 { width: 60%; }
+    .fake-ui .bar.w40 { width: 40%; }
+    .fake-ui .bar.blue { background: #cfe2ff; width: 50%; }
+    .fake-ui .bar.red { background: #ffd4d4; width: 70%; margin-top: auto; }
+    .note {
+      align-self: flex-start;
+      margin-top: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #c77c0a;
+      background: rgba(255, 159, 10, 0.14);
+      padding: 2px 7px;
+      border-radius: 999px;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .meta {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 0.5px solid rgba(0,0,0,0.06);
+      font-size: 10px;
+      color: var(--secondary);
+    }
+    .meta .app-icon {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      background: conic-gradient(from 180deg, #ea4335, #fbbc05, #34a853, #4285f4, #ea4335);
+      flex-shrink: 0;
+    }
+    .meta .app-icon.paste {
+      background: linear-gradient(135deg, #34d0e8, #5b7cfa);
+    }
+    .meta .app-icon.term {
+      background: #1d1d1f;
+    }
+    .meta .name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    .meta .star {
+      color: var(--orange);
+      font-size: 10px;
+      line-height: 1;
+    }
+    .meta .time {
+      font-variant-numeric: tabular-nums;
+      color: var(--tertiary);
+      flex-shrink: 0;
+    }
+    .caption {
+      margin-top: 28px;
+      width: min(1180px, 100%);
+      font-size: 12px;
+      color: rgba(0,0,0,0.42);
+      line-height: 1.5;
+    }
+    .caption strong { color: rgba(0,0,0,0.55); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="label">
+    <h1>Prototype A · Spotlight workbench</h1>
+    <span>ai paste · macOS menu-bar clipboard</span>
+  </div>
+
+  <div class="workbench">
+    <div class="toolbar">
+      <div class="brand">
+        <div class="mark"></div>
+        ai paste
+      </div>
+      <div class="search">
+        <span class="icon">⌕</span>
+        <input type="text" placeholder="Filter…" value="" readonly />
+        <span class="count">13</span>
+      </div>
+      <div class="trailing">
+        <div class="icon-btn" title="Settings">⚙</div>
+      </div>
+    </div>
+
+    <div class="filters">
+      <div class="segmented">
+        <button class="on">All</button>
+        <button>Favorites</button>
+      </div>
+      <div class="app-filter">
+        <span>App</span>
+        <strong>All Apps ▾</strong>
+      </div>
+      <div class="hint">↩ Paste · ⌘C Copy · ⌘P Favorite</div>
+    </div>
+
+    <div class="gallery">
+      <div class="card">
+        <div class="body">denied</div>
+        <div class="meta">
+          <div class="app-icon"></div>
+          <span class="name">Google Chrome</span>
+          <span class="time">10m</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="body">黏贴板，可以取哪些英文名</div>
+        <div class="meta">
+          <div class="app-icon"></div>
+          <span class="name">Google Chrome</span>
+          <span class="time">10m</span>
+        </div>
+      </div>
+
+      <div class="card selected">
+        <div class="thumb">
+          <div class="fake-ui">
+            <div class="bar w60"></div>
+            <div class="bar"></div>
+            <div class="bar w40"></div>
+            <div class="bar blue"></div>
+            <div class="bar"></div>
+            <div class="bar red"></div>
+          </div>
+        </div>
+        <div class="meta">
+          <div class="app-icon clip"></div>
+          <span class="name">ai paste</span>
+          <span class="star">★</span>
+          <span class="time">33m</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="body mono">https://x.ai/build/changelog</div>
+        <div class="note">测试 ccccji</div>
+        <div class="meta">
+          <div class="app-icon"></div>
+          <span class="name">Google Chrome</span>
+          <span class="star">★</span>
+          <span class="time">1h</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="body mono">curl -fsSL https://x.ai/cli/
+install.sh | bash</div>
+        <div class="meta">
+          <div class="app-icon"></div>
+          <span class="name">Google Chrome</span>
+          <span class="star">★</span>
+          <span class="time">1h</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="body">→ Developer ID</div>
+        <div class="meta">
+          <div class="app-icon term"></div>
+          <span class="name">iTerm2</span>
+          <span class="star">★</span>
+          <span class="time">15h</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="caption">
+    <strong>Changes vs current:</strong>
+    Search is optical center · All/Favorites as segmented control (not star-as-filter) ·
+    Favorite star only on card meta row · Notes as quiet capsules above meta · thinner selection ring · optional shortcut hint.
+  </p>
+</body>
+</html>

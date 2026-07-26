@@ -1,74 +1,77 @@
-# clipai Phase 1 — Manual smoke checklist
+# aipaste — Manual smoke checklist
 
-Use after building and running clipai from Xcode. Tick each item when it behaves as described.
+Use this checklist after building and running aipaste from Xcode. Tick each item only after observing the described behavior.
 
 ## Prerequisites
 
-- [ ] Generated project: `./scripts/generate-project.sh`
-- [ ] Built & run clipai (menu bar shows **clipai**)
-- [ ] Optional: TextEdit or Notes open for paste targets
+- [ ] Generate the project: `./scripts/generate-project.sh`
+- [ ] Build and run aipaste from Xcode
+- [ ] Open TextEdit or Notes as a paste target
+- [ ] Copy at least one text item and one image or screenshot
 
-## Checklist (design DoD)
+## Gallery and menu bar
 
-1. **Launch**
-   - [ ] Status bar shows `clipai`
-   - [ ] No Dock icon (accessory / `LSUIElement`)
+- [ ] Menu bar shows a monochrome clipboard icon in light and dark mode
+- [ ] Clicking the icon directly opens and closes the history gallery
+- [ ] ⇧⌘V opens a bottom horizontal card strip on the active screen
+- [ ] The gallery has no old bottom-row Paste, Copy, Delete, or Close buttons
+- [ ] Text cards show content, source, and time; image cards show real thumbnails
+- [ ] Newest clipboard records appear first
+- [ ] Searching filters the visible cards and a no-results state appears when nothing matches
+- [ ] The All Apps menu lists source apps from history and filters cards to the chosen app
+- [ ] App filter and text search can be used together
+- [ ] Favorites chip toggles between All and Favorites; empty favorites shows guidance
+- [ ] Card context menu can Add to Favorites / Remove Favorite; pinned cards show a star
+- [ ] Pinned cards support Add/Edit Note… (≤10 chars); note replaces app name in meta (icon kept); hover shows source app
+- [ ] ⌘P toggles favorite on the selected card; over-cap shows a status message
+- [ ] Clear history keeps favorites; unpinned items are removed
+- [ ] Settings → Maximum favorites defaults to 30 and can be changed
+- [ ] The gallery shows an empty state when history is empty
 
-2. **Text history**
-   - [ ] Copy three different text snippets
-   - [ ] Open history (status menu **Show History** or **⇧⌘V**)
-   - [ ] All three appear in the list (newest first)
+## Keyboard, pointer, and card actions
 
-3. **Search + paste**
-   - [ ] Type a search query that matches only one item
-   - [ ] Select it → **Paste** into TextEdit
-   - [ ] With Accessibility enabled: text appears without manually pressing ⌘V
-   - [ ] Panel closes after paste
+- [ ] Left/Right changes selection and scrolls the selected card into view
+- [ ] Single-clicking a card selects it immediately (no delayed highlight)
+- [ ] Enter pastes the selected card and closes the gallery
+- [ ] Double-clicking a card pastes it and closes the gallery
+- [ ] Command-C copies the selected card without closing the gallery
+- [ ] Forward Delete removes the selected card (`fn+Delete` on compact Mac keyboards); Backspace still edits the search field
+- [ ] Esc closes the gallery
+- [ ] Clicking outside the gallery (desktop or another app) dismisses it
+- [ ] Opening the overflow or card context menu does not dismiss the gallery
+- [ ] A card context menu supports Copy and Delete
 
-4. **Dedupe**
-   - [ ] Copy the same text twice
-   - [ ] History still shows one row for that content (updated time may change)
+## Accessibility behavior
 
-5. **Images**
-   - [ ] Copy a screenshot or image
-   - [ ] History shows an image row (🖼)
-   - [ ] Paste into Preview / Notes succeeds
+- [ ] With Accessibility permission granted, Enter or double-click pastes into the previous app automatically
+- [ ] With Accessibility permission denied, paste degrades to copy and the gallery shows a non-modal explanation and Open Settings action
+- [ ] The denied-permission path never shows a blocking alert
+- [ ] After the degraded copy, manually pressing ⌘V in the target app pastes the expected content
 
-6. **Ignore rules**
-   - [ ] Preferences → add current test app’s bundle ID (or a known ID)
-   - [ ] Copy something from that app → it is **not** ingested
-   - [ ] Remove ignore → copy again → ingested
+## Overflow menu
 
-7. **Accessibility degrade**
-   - [ ] Turn off Accessibility for clipai (or never grant it)
-   - [ ] **Paste** from history → content is copied; status guides to enable Accessibility / press ⌘V
-   - [ ] Re-enable Accessibility → auto-paste works again
+- [ ] Settings is reachable from the overflow menu and opens Preferences
+- [ ] Clear History is reachable from the overflow menu and requires confirmation
+- [ ] Quit is reachable from the overflow menu and ends the process cleanly
 
-8. **Clear all**
-   - [ ] Preferences → **Clear All History…**
-   - [ ] History list is empty
+## Existing behavior regression
 
-9. **Persistence**
-   - [ ] Copy a few items (do not clear)
-   - [ ] Quit clipai and relaunch
-   - [ ] History still present under `~/Library/Application Support/clipai/`
+- [ ] Copying the same text twice leaves one history record for that content (its time may update)
+- [ ] Preferences → Privacy shows ignored apps with **friendly names** and icons (not raw Bundle IDs only)
+- [ ] **Add App…** menu lists running apps and apps seen in history; picking one adds it without typing a Bundle ID
+- [ ] **Enter Bundle ID** still works for advanced manual entry
+- [ ] Preferences ignore rules prevent records from the configured app and work again after removal
+- [ ] History survives quitting and relaunching under `~/Library/Application Support/aipaste/`
+- [ ] Setting a low maximum-item limit prunes the oldest records after the limit is exceeded
+- [ ] Launch at Login can be toggled without crashing (full SMAppService behavior may require a signed build)
+- [ ] aipaste remains a menu-bar accessory without a Dock icon
 
-10. **Capacity prune**
-    - [ ] Preferences → set max items low (e.g. 50)
-    - [ ] Ingest more than the limit
-    - [ ] Oldest items are pruned
-
-## Extras
-
-- [ ] **Copy** button places item on pasteboard without auto-paste
-- [ ] **Delete** removes a single row
-- [ ] **Launch at login** toggle does not crash (may need a signed build for full SMAppService effect)
-- [ ] Quit via menu ends the process cleanly
-
-## Done when
-
-All checklist items pass on a local Mac with full Xcode. Unit tests:
+## Automated checks
 
 ```bash
-xcodebuild -project clipai.xcodeproj -scheme clipai -destination 'platform=macOS' test
+./scripts/generate-project.sh
+xcodebuild -project aipaste.xcodeproj -scheme aipaste -destination 'platform=macOS' test
+xcodebuild -project aipaste.xcodeproj -scheme aipaste -destination 'platform=macOS' clean build
 ```
+
+Done when every applicable manual item passes, the test command reports `** TEST SUCCEEDED **` with zero failures, and the clean build reports `** BUILD SUCCEEDED **`.

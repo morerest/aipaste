@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8" />
+  <title>ai paste — Favorites filter prototype</title>
+  <style>
+    :root {
+      --bg: #c8cdd4;
+      --panel: rgba(246, 247, 249, 0.92);
+      --card: #ffffff;
+      --text: #1d1d1f;
+      --secondary: #6e6e73;
+      --tertiary: #aeaeb2;
+      --stroke: rgba(0, 0, 0, 0.08);
+      --accent: #007aff;
+      --orange: #ff9f0a;
+      --radius-panel: 22px;
+      --radius-card: 14px;
+      --shadow: 0 1px 2px rgba(0,0,0,0.06), 0 18px 40px rgba(0,0,0,0.14);
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 48px 32px 56px;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(1200px 500px at 50% 0%, #e8ebf0 0%, transparent 60%),
+        linear-gradient(180deg, #b8bec8 0%, #d5d9df 45%, #c5cad1 100%);
+    }
+    .label {
+      width: min(1180px, 100%);
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .label h1 {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: rgba(0,0,0,0.55);
+      text-transform: uppercase;
+    }
+    .label span { font-size: 12px; color: rgba(0,0,0,0.4); }
+    .workbench {
+      width: min(1180px, 100%);
+      background: var(--panel);
+      backdrop-filter: blur(40px) saturate(1.4);
+      -webkit-backdrop-filter: blur(40px) saturate(1.4);
+      border-radius: var(--radius-panel);
+      box-shadow: var(--shadow);
+      border: 0.5px solid rgba(255,255,255,0.55);
+      padding: 14px 16px 18px;
+    }
+    .toolbar {
+      display: grid;
+      grid-template-columns: 120px 1fr 120px;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--secondary);
+    }
+    .brand .mark {
+      width: 18px; height: 18px; border-radius: 5px;
+      background: linear-gradient(135deg, #34d0e8, #5b7cfa 55%, #9b5de5);
+    }
+    .search {
+      justify-self: center;
+      width: min(440px, 100%);
+      height: 34px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.72);
+      border: 1px solid rgba(0,0,0,0.08);
+    }
+    .search .icon { color: var(--secondary); opacity: 0.7; }
+    .search input {
+      flex: 1; border: none; background: transparent;
+      font: inherit; font-size: 13px; font-weight: 500; outline: none;
+    }
+    .search input::placeholder { color: var(--tertiary); font-weight: 400; }
+    .search .count {
+      font-size: 11px; font-weight: 600; color: var(--secondary);
+      background: rgba(0,0,0,0.06); padding: 2px 7px; border-radius: 999px;
+    }
+    .trailing { justify-self: end; }
+    .icon-btn {
+      width: 30px; height: 26px; border-radius: 8px;
+      border: 0.5px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.55);
+      display: grid; place-items: center; color: var(--secondary);
+    }
+    .filters {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 14px; padding: 0 2px;
+    }
+    .segmented {
+      display: inline-flex; padding: 2px; border-radius: 9px;
+      background: rgba(0,0,0,0.06);
+    }
+    .segmented button {
+      border: none; background: transparent; font: inherit;
+      font-size: 12px; font-weight: 500; color: var(--secondary);
+      padding: 5px 12px; border-radius: 7px;
+    }
+    .segmented button.on {
+      background: #fff; color: var(--text); font-weight: 600;
+      box-shadow: 0 0.5px 1px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .segmented button.on.fav { color: #c77c0a; }
+    .app-filter {
+      font-size: 12px; font-weight: 500; color: var(--secondary);
+      padding: 5px 10px; border-radius: 999px;
+      background: rgba(255,255,255,0.55);
+      border: 0.5px solid var(--stroke);
+    }
+    .hint { margin-left: auto; font-size: 11px; color: var(--tertiary); }
+    .gallery { display: flex; gap: 12px; padding: 2px; }
+    .card {
+      flex: 0 0 200px; height: 188px; background: var(--card);
+      border-radius: var(--radius-card);
+      border: 1.5px solid rgba(0,0,0,0.08);
+      display: flex; flex-direction: column;
+      padding: 11px 12px 10px;
+    }
+    .card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(0,122,255,0.25);
+    }
+    .card .body {
+      flex: 1; font-size: 12.5px; line-height: 1.4; overflow: hidden;
+      display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical;
+    }
+    .card .body.mono {
+      font-family: ui-monospace, Menlo, monospace; font-size: 11px;
+    }
+    .note {
+      align-self: flex-start; margin-top: 6px;
+      font-size: 10px; font-weight: 600; color: #c77c0a;
+      background: rgba(255, 159, 10, 0.14);
+      padding: 2px 7px; border-radius: 999px;
+    }
+    .meta {
+      display: flex; align-items: center; gap: 5px;
+      margin-top: 8px; padding-top: 8px;
+      border-top: 0.5px solid rgba(0,0,0,0.06);
+      font-size: 10px; color: var(--secondary);
+    }
+    .app-icon {
+      width: 12px; height: 12px; border-radius: 3px;
+      background: conic-gradient(from 180deg, #ea4335, #fbbc05, #34a853, #4285f4, #ea4335);
+    }
+    .app-icon.term { background: #1d1d1f; }
+    .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .star { color: var(--orange); }
+    .time { color: var(--tertiary); font-variant-numeric: tabular-nums; }
+    .caption {
+      margin-top: 28px; width: min(1180px, 100%);
+      font-size: 12px; color: rgba(0,0,0,0.42); line-height: 1.5;
+    }
+    .caption strong { color: rgba(0,0,0,0.55); }
+  </style>
+</head>
+<body>
+  <div class="label">
+    <h1>Prototype A · Favorites only</h1>
+    <span>Filter state: Favorites · 4 items</span>
+  </div>
+
+  <div class="workbench">
+    <div class="toolbar">
+      <div class="brand"><div class="mark"></div>ai paste</div>
+      <div class="search">
+        <span class="icon">⌕</span>
+        <input placeholder="Filter favorites…" readonly />
+        <span class="count">4</span>
+      </div>
+      <div class="trailing"><div class="icon-btn">⚙</div></div>
+    </div>
+
+    <div class="filters">
+      <div class="segmented">
+        <button>All</button>
+        <button class="on fav">Favorites</button>
+      </div>
+      <div class="app-filter">App · All Apps ▾</div>
+      <div class="hint">Right-click · Add Note… · ⌘P</div>
+    </div>
+
+    <div class="gallery">
+      <div class="card selected">
+        <div class="body mono">https://x.ai/build/changelog</div>
+        <div class="note">测试 ccccji</div>
+        <div class="meta">
+          <div class="app-icon"></div>
+          <span class="name">Google Chrome</span>
+          <span class="star">★</span>
+          <span class="time">1h</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="body mono">curl -fsSL https://x.ai/cli/
+install.sh | bash</div>
+        <div class="meta">
+          <div class="app-icon"></div>
+          <span class="name">Google Chrome</span>
+          <span class="star">★</span>
+          <span class="time">1h</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="body">→ Developer ID</div>
+        <div class="note">签名</div>
+        <div class="meta">
+          <div class="app-icon term"></div>
+          <span class="name">iTerm2</span>
+          <span class="star">★</span>
+          <span class="time">15h</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="body">alice@company.com</div>
+        <div class="note">工作邮箱</div>
+        <div class="meta">
+          <div class="app-icon"></div>
+          <span class="name">Mail</span>
+          <span class="star">★</span>
+          <span class="time">2d</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="caption">
+    <strong>Favorites mode:</strong> segmented control active · search counts favorites only ·
+    every card shows ★ · notes stay in the meta zone, never over content.
+  </p>
+</body>
+</html>

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8" />
+  <title>ai paste — Card anatomy</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+      background: #eef0f3;
+      color: #1d1d1f;
+      padding: 48px 40px;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 6px;
+    }
+    .sub {
+      font-size: 14px;
+      color: #6e6e73;
+      margin-bottom: 36px;
+    }
+    .row {
+      display: flex;
+      gap: 48px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .card-wrap { position: relative; }
+    .card {
+      width: 220px;
+      height: 200px;
+      background: #fff;
+      border-radius: 14px;
+      border: 1.5px solid #007aff;
+      box-shadow: 0 0 0 1px rgba(0,122,255,0.2), 0 12px 28px rgba(0,0,0,0.08);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+    }
+    .body {
+      flex: 1;
+      font-size: 13px;
+      line-height: 1.4;
+      color: #1d1d1f;
+    }
+    .body.mono {
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 11.5px;
+      color: #3a3a3c;
+    }
+    .note {
+      align-self: flex-start;
+      margin-top: 8px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #c77c0a;
+      background: rgba(255, 159, 10, 0.14);
+      padding: 2px 7px;
+      border-radius: 999px;
+    }
+    .meta {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 0.5px solid rgba(0,0,0,0.08);
+      font-size: 10px;
+      color: #6e6e73;
+    }
+    .app-icon {
+      width: 12px; height: 12px; border-radius: 3px;
+      background: conic-gradient(from 180deg, #ea4335, #fbbc05, #34a853, #4285f4, #ea4335);
+    }
+    .name { flex: 1; }
+    .star { color: #ff9f0a; }
+    .time { color: #aeaeb2; font-variant-numeric: tabular-nums; }
+
+    /* Callouts */
+    .callouts { flex: 1; min-width: 280px; max-width: 420px; }
+    .callout {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 18px;
+      align-items: flex-start;
+    }
+    .num {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #007aff; color: #fff;
+      font-size: 12px; font-weight: 700;
+      display: grid; place-items: center;
+      flex-shrink: 0;
+    }
+    .callout h3 {
+      font-size: 13px; font-weight: 600; margin-bottom: 3px;
+    }
+    .callout p {
+      font-size: 12.5px; color: #6e6e73; line-height: 1.45;
+    }
+    .specs {
+      margin-top: 40px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .spec {
+      background: #fff;
+      border-radius: 12px;
+      padding: 14px 16px;
+      border: 0.5px solid rgba(0,0,0,0.06);
+    }
+    .spec h4 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #aeaeb2;
+      margin-bottom: 6px;
+    }
+    .spec p {
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <h1>Card anatomy</h1>
+  <p class="sub">Single card structure for ai paste workbench · favorite + note</p>
+
+  <div class="row">
+    <div class="card-wrap">
+      <div class="card">
+        <div class="body mono">https://x.ai/build/changelog</div>
+        <div class="note">测试 ccccji</div>
+        <div class="meta">
+          <div class="app-icon"></div>
+          <span class="name">Google Chrome</span>
+          <span class="star">★</span>
+          <span class="time">1h</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="callouts">
+      <div class="callout">
+        <div class="num">1</div>
+        <div>
+          <h3>Content zone (~70%)</h3>
+          <p>Text or image only. Never overlay stars or notes on the body.</p>
+        </div>
+      </div>
+      <div class="callout">
+        <div class="num">2</div>
+        <div>
+          <h3>Note capsule (optional)</h3>
+          <p>≤10 characters. Sits above the meta row, orange soft fill — not body text color.</p>
+        </div>
+      </div>
+      <div class="callout">
+        <div class="num">3</div>
+        <div>
+          <h3>Meta row</h3>
+          <p>Source icon + name · favorite star (state only) · relative time with tabular figures.</p>
+        </div>
+      </div>
+      <div class="callout">
+        <div class="num">4</div>
+        <div>
+          <h3>Selection</h3>
+          <p>System blue 1.5–2pt stroke. Same padding as unselected cards.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="specs">
+    <div class="spec">
+      <h4>Size</h4>
+      <p>200–220 × 188–200 pt</p>
+    </div>
+    <div class="spec">
+      <h4>Corner</h4>
+      <p>14 pt continuous</p>
+    </div>
+    <div class="spec">
+      <h4>Gap</h4>
+      <p>12 pt between cards</p>
+    </div>
+    <div class="spec">
+      <h4>Type</h4>
+      <p>Body 12–13 · Meta 10</p>
+    </div>
+    <div class="spec">
+      <h4>Favorite</h4>
+      <p>★ orange · meta trailing</p>
+    </div>
+    <div class="spec">
+      <h4>Actions</h4>
+      <p>Enter paste · ⌘P pin · context menu note</p>
+    </div>
+  </div>
+</body>
+</html>

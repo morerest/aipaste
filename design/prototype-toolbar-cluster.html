@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ai paste — Toolbar Cluster Prototype</title>
+  <style>
+    :root {
+      --panel: rgba(246, 247, 249, 0.92);
+      --card: #ffffff;
+      --text: #1d1d1f;
+      --secondary: #6e6e73;
+      --tertiary: #aeaeb2;
+      --stroke: rgba(0, 0, 0, 0.08);
+      --accent: #007aff;
+      --orange: #ff9f0a;
+      --orange-soft: rgba(255, 159, 10, 0.14);
+      --ai-0: #38dbeb;
+      --ai-1: #7a85ff;
+      --ai-2: #b866f5;
+      --clip-ink: #5c6b94;
+      --radius-panel: 22px;
+      --radius-card: 14px;
+      --radius-cluster: 12px;
+      --shadow-panel: 0 1px 2px rgba(0,0,0,0.06), 0 18px 40px rgba(0,0,0,0.14);
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(1200px 500px at 50% 0%, #e8ebf0 0%, transparent 60%),
+        linear-gradient(180deg, #b8bec8 0%, #d5d9df 45%, #c5cad1 100%);
+      padding: 40px 28px 64px;
+    }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    /* ── Page chrome ── */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 10px;
+    }
+    .page-header h1 {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: rgba(0,0,0,0.55);
+      text-transform: uppercase;
+    }
+    .page-header span {
+      font-size: 12px;
+      color: rgba(0,0,0,0.4);
+    }
+    .page-lead {
+      font-size: 13px;
+      line-height: 1.55;
+      color: rgba(0,0,0,0.48);
+      margin-bottom: 28px;
+      max-width: 720px;
+    }
+    .page-lead strong { color: rgba(0,0,0,0.62); font-weight: 600; }
+
+    .section {
+      margin-bottom: 36px;
+    }
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .section-label h2 {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: rgba(0,0,0,0.48);
+    }
+    .tag {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.06);
+      color: rgba(0,0,0,0.45);
+    }
+    .tag.bad { background: rgba(255, 59, 48, 0.12); color: #c0392b; }
+    .tag.good { background: rgba(52, 199, 89, 0.14); color: #1f7a3a; }
+    .tag.blue { background: rgba(0, 122, 255, 0.12); color: #0060c0; }
+
+    /* ── Workbench shell ── */
+    .workbench {
+      background: var(--panel);
+      backdrop-filter: blur(40px) saturate(1.4);
+      -webkit-backdrop-filter: blur(40px) saturate(1.4);
+      border-radius: var(--radius-panel);
+      box-shadow: var(--shadow-panel);
+      border: 0.5px solid rgba(255,255,255,0.55);
+      padding: 14px 16px 16px;
+    }
+
+    /* ══════════════════════════════════════
+       CURRENT (before) — mirrors live UI
+       ══════════════════════════════════════ */
+    .toolbar-before {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      margin-bottom: 14px;
+      min-height: 34px;
+    }
+    .before-brand {
+      justify-self: start;
+      display: flex;
+      align-items: baseline;
+      gap: 5px;
+      font-size: 15px;
+      letter-spacing: -0.3px;
+    }
+    .before-brand .paste {
+      font-weight: 600;
+      background: linear-gradient(180deg, #6b7aa8, #525f8c);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .before-brand .ai {
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--ai-0), var(--ai-1), var(--ai-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 0 3px rgba(56, 219, 235, 0.28));
+    }
+    .before-center {
+      justify-self: center;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .before-search {
+      width: 420px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.55);
+      border: 1.5px solid transparent;
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,0.04),
+        0 0 10px rgba(122, 133, 255, 0.18);
+      background-image:
+        linear-gradient(rgba(255,255,255,0.55), rgba(255,255,255,0.55)),
+        linear-gradient(90deg, rgba(56,219,235,0.95), rgba(122,133,255,0.85), rgba(184,102,245,0.9));
+      background-origin: border-box;
+      background-clip: padding-box, border-box;
+    }
+    .before-search .mag {
+      font-size: 12px;
+      background: linear-gradient(135deg, var(--ai-0), var(--ai-1), var(--ai-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      font-weight: 600;
+    }
+    .before-search input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      outline: none;
+      color: var(--text);
+      min-width: 0;
+    }
+    .before-search input::placeholder { color: var(--tertiary); font-weight: 400; }
+    .before-search .count {
+      font-size: 11px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: rgba(0,0,0,0.55);
+      background: rgba(0,0,0,0.08);
+      padding: 2px 6px;
+      border-radius: 999px;
+    }
+    .before-chip {
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.5);
+      border: 0.5px solid rgba(0,0,0,0.08);
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--secondary);
+      white-space: nowrap;
+    }
+    .before-chip .star { font-size: 11px; line-height: 1; }
+    .before-trailing {
+      justify-self: end;
+    }
+    .before-gear {
+      width: 30px;
+      height: 26px;
+      border-radius: 8px;
+      border: 0.5px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.55);
+      display: grid;
+      place-items: center;
+      color: var(--secondary);
+      font-size: 13px;
+    }
+
+    /* ══════════════════════════════════════
+       PROPOSED — brand + cluster + overflow
+       ══════════════════════════════════════ */
+    .toolbar-after {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      min-height: 34px;
+    }
+    .toolbar-after .brand {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .brand-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      background:
+        linear-gradient(145deg, #3ae0f0 0%, #6b7cff 48%, #b366f0 100%);
+      box-shadow:
+        inset 0 0.5px 0 rgba(255,255,255,0.45),
+        0 1px 2px rgba(91, 100, 200, 0.25);
+      position: relative;
+      flex-shrink: 0;
+    }
+    /* tiny clipboard glyph hint inside icon */
+    .brand-icon::after {
+      content: "";
+      position: absolute;
+      inset: 4px 5px 3px;
+      border-radius: 2px;
+      border: 1.2px solid rgba(255,255,255,0.85);
+      background: rgba(255,255,255,0.12);
+    }
+    .brand-wordmark {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      font-size: 14px;
+      letter-spacing: -0.3px;
+      line-height: 1;
+    }
+    .brand-wordmark .paste {
+      font-weight: 600;
+      background: linear-gradient(180deg, #6b7aa8, #525f8c);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .brand-wordmark .ai {
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--ai-0), var(--ai-1) 50%, var(--ai-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 0 2.5px rgba(56, 219, 235, 0.25));
+    }
+
+    .toolbar-after .spacer { flex: 1 1 auto; min-width: 8px; }
+
+    /* Unified filter cluster */
+    .cluster {
+      flex: 0 1 520px;
+      width: min(520px, 100%);
+      min-width: 360px;
+      max-width: 560px;
+      height: 34px;
+      display: flex;
+      align-items: stretch;
+      border-radius: var(--radius-cluster);
+      background: rgba(255,255,255,0.62);
+      border: 1px solid rgba(0,0,0,0.08);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+      overflow: hidden;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .cluster.focused {
+      border-color: transparent;
+      border-width: 1.5px;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.72), rgba(255,255,255,0.72)),
+        linear-gradient(90deg, rgba(56,219,235,0.95), rgba(122,133,255,0.88), rgba(184,102,245,0.92));
+      background-origin: border-box;
+      background-clip: padding-box, border-box;
+      box-shadow:
+        0 0 0 3px rgba(122, 133, 255, 0.14),
+        0 2px 12px rgba(122, 133, 255, 0.12);
+    }
+    .cluster.active-filters:not(.focused) {
+      border-color: rgba(0, 122, 255, 0.28);
+      box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.08);
+    }
+
+    .cluster-input {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 10px 0 12px;
+    }
+    .cluster-input .mag {
+      flex-shrink: 0;
+      width: 14px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--secondary);
+      opacity: 0.75;
+      line-height: 1;
+    }
+    .cluster.focused .cluster-input .mag {
+      background: linear-gradient(135deg, var(--ai-0), var(--ai-1), var(--ai-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      opacity: 1;
+    }
+    .cluster-input input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      outline: none;
+      min-width: 0;
+    }
+    .cluster-input input::placeholder {
+      color: var(--tertiary);
+      font-weight: 400;
+    }
+    .cluster-count {
+      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--secondary);
+      background: rgba(0,0,0,0.06);
+      padding: 2px 7px;
+      border-radius: 999px;
+      line-height: 1.3;
+    }
+    .cluster.focused .cluster-count {
+      background: rgba(0,0,0,0.09);
+      color: rgba(0,0,0,0.62);
+    }
+
+    .cluster-divider {
+      width: 1px;
+      align-self: stretch;
+      margin: 7px 0;
+      background: rgba(0,0,0,0.08);
+      flex-shrink: 0;
+    }
+
+    .cluster-tail {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: stretch;
+    }
+    .cluster-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 0 11px;
+      border: none;
+      background: transparent;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--secondary);
+      cursor: default;
+      white-space: nowrap;
+      transition: background 0.12s ease, color 0.12s ease;
+    }
+    .cluster-btn:hover {
+      background: rgba(0,0,0,0.04);
+    }
+    .cluster-btn .ico {
+      font-size: 12px;
+      line-height: 1;
+      opacity: 0.85;
+    }
+    .cluster-btn.star-on {
+      color: #c77c0a;
+      background: var(--orange-soft);
+      font-weight: 600;
+    }
+    .cluster-btn.star-on .ico { opacity: 1; }
+    .cluster-btn.app-on {
+      color: var(--accent);
+      background: rgba(0, 122, 255, 0.08);
+      font-weight: 600;
+    }
+    .cluster-btn .app-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      background: conic-gradient(from 180deg, #ea4335, #fbbc05, #34a853, #4285f4, #ea4335);
+      flex-shrink: 0;
+    }
+    .cluster-btn .app-dot.generic {
+      background: rgba(0,0,0,0.12);
+      display: grid;
+      place-items: center;
+      font-size: 8px;
+      color: var(--secondary);
+    }
+    .cluster-btn .caret {
+      font-size: 8px;
+      opacity: 0.55;
+      margin-left: -1px;
+    }
+    .cluster-btn.clear {
+      padding: 0 9px;
+      color: var(--tertiary);
+    }
+    .cluster-btn.clear:hover { color: var(--secondary); }
+
+    .overflow-btn {
+      flex: 0 0 auto;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      border: 0.5px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.55);
+      display: grid;
+      place-items: center;
+      color: var(--secondary);
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      line-height: 1;
+      box-shadow: 0 0.5px 1px rgba(0,0,0,0.03);
+    }
+
+    /* toast near brand */
+    .toast {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-left: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.7);
+      border: 0.5px solid rgba(0,0,0,0.08);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--secondary);
+      white-space: nowrap;
+    }
+    .toast .check {
+      color: var(--accent);
+      font-size: 11px;
+    }
+
+    /* ── Gallery (shared, simplified) ── */
+    .gallery {
+      display: flex;
+      gap: 12px;
+      overflow: hidden;
+      padding: 2px 2px 4px;
+    }
+    .card {
+      flex: 0 0 196px;
+      height: 176px;
+      background: var(--card);
+      border-radius: var(--radius-card);
+      border: 1.5px solid rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      padding: 11px 12px 10px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(0,122,255,0.22), 0 4px 14px rgba(0,122,255,0.10);
+    }
+    .card .body {
+      flex: 1;
+      font-size: 12.5px;
+      line-height: 1.4;
+      color: var(--text);
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 7;
+      -webkit-box-orient: vertical;
+      word-break: break-word;
+    }
+    .card .body.mono {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 11px;
+    }
+    .card .body.url {
+      color: var(--text);
+    }
+    .card .thumb {
+      flex: 1;
+      border-radius: 10px;
+      background: linear-gradient(160deg, #f2f4f8 0%, #e6e9ef 100%);
+      border: 0.5px solid rgba(0,0,0,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .card .thumb .fake-ui {
+      width: 74%;
+      height: 88%;
+      background: #fff;
+      border-radius: 6px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      border: 0.5px solid rgba(0,0,0,0.06);
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .fake-ui .bar { height: 5px; border-radius: 2px; background: #e8eaef; }
+    .fake-ui .bar.w60 { width: 60%; }
+    .fake-ui .bar.w40 { width: 40%; }
+    .fake-ui .bar.blue { background: #cfe2ff; width: 50%; }
+    .fake-ui .bar.red { background: #ffd4d4; width: 70%; margin-top: auto; }
+    .note {
+      align-self: flex-start;
+      margin-top: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #c77c0a;
+      background: var(--orange-soft);
+      padding: 2px 7px;
+      border-radius: 999px;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .meta {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 0.5px solid rgba(0,0,0,0.06);
+      font-size: 10px;
+      color: var(--secondary);
+    }
+    .meta .app-icon {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      background: conic-gradient(from 180deg, #ea4335, #fbbc05, #34a853, #4285f4, #ea4335);
+      flex-shrink: 0;
+    }
+    .meta .app-icon.paste {
+      background: linear-gradient(135deg, #34d0e8, #5b7cfa);
+    }
+    .meta .app-icon.term { background: #1d1d1f; }
+    .meta .name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    .meta .star {
+      color: var(--orange);
+      font-size: 10px;
+      line-height: 1;
+    }
+    .meta .time {
+      font-variant-numeric: tabular-nums;
+      color: var(--tertiary);
+      flex-shrink: 0;
+    }
+
+    /* ── States strip (compact toolbars only) ── */
+    .states {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .state-row {
+      background: rgba(255,255,255,0.35);
+      border: 0.5px solid rgba(0,0,0,0.05);
+      border-radius: 16px;
+      padding: 12px 14px 14px;
+    }
+    .state-row .state-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(0,0,0,0.42);
+      margin-bottom: 10px;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .state-row .workbench {
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    }
+    .state-row .gallery { display: none; }
+    .state-row .workbench { padding-bottom: 14px; }
+    .state-row .toolbar-after { margin-bottom: 0; }
+
+    /* ── Spec callouts ── */
+    .callouts {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .callout {
+      background: rgba(255,255,255,0.45);
+      border: 0.5px solid rgba(0,0,0,0.06);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .callout h3 {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(0,0,0,0.62);
+      margin-bottom: 6px;
+    }
+    .callout p {
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: rgba(0,0,0,0.45);
+    }
+    .callout code {
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 10.5px;
+      background: rgba(0,0,0,0.05);
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: rgba(0,0,0,0.6);
+    }
+
+    .caption {
+      margin-top: 8px;
+      font-size: 12px;
+      color: rgba(0,0,0,0.42);
+      line-height: 1.55;
+    }
+    .caption strong { color: rgba(0,0,0,0.55); font-weight: 600; }
+
+    .anatomy {
+      margin-top: 18px;
+      padding: 14px 16px;
+      background: rgba(255,255,255,0.4);
+      border: 0.5px solid rgba(0,0,0,0.06);
+      border-radius: 14px;
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 11.5px;
+      line-height: 1.7;
+      color: rgba(0,0,0,0.55);
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    @media (max-width: 900px) {
+      .callouts { grid-template-columns: 1fr; }
+      .cluster { min-width: 0; flex: 1 1 auto; }
+      .before-search { width: min(420px, 70vw); }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="page-header">
+      <h1>Toolbar Cluster · Prototype</h1>
+      <span>ai paste · top bar redesign mock</span>
+    </div>
+    <p class="page-lead">
+      目标：把散装的「搜索 + 星 + All Apps + 齿轮」收成
+      <strong>品牌锚点 · 统一筛选簇 · 溢出菜单</strong>。
+      单行高度不变，宽屏不空、筛选可发现、形态统一。
+    </p>
+
+    <!-- ════════ BEFORE ════════ -->
+    <section class="section">
+      <div class="section-label">
+        <h2>Current</h2>
+        <span class="tag bad">Before</span>
+      </div>
+      <div class="workbench">
+        <div class="toolbar-before">
+          <div class="before-brand">
+            <span class="ai">ai</span><span class="paste">paste</span>
+          </div>
+          <div class="before-center">
+            <div class="before-search">
+              <span class="mag">⌕</span>
+              <input type="text" placeholder="Filter…" readonly />
+              <span class="count">3</span>
+            </div>
+            <div class="before-chip" title="Favorites filter">
+              <span class="star">☆</span>
+            </div>
+            <div class="before-chip">
+              <span style="opacity:0.7">⬚</span>
+              All Apps ▾
+            </div>
+          </div>
+          <div class="before-trailing">
+            <div class="before-gear">⚙</div>
+          </div>
+        </div>
+        <div class="gallery" aria-hidden="true">
+          <div class="card selected">
+            <div class="thumb">
+              <div class="fake-ui">
+                <div class="bar w60"></div>
+                <div class="bar"></div>
+                <div class="bar w40"></div>
+                <div class="bar blue"></div>
+                <div class="bar"></div>
+                <div class="bar red"></div>
+              </div>
+            </div>
+            <div class="meta">
+              <div class="app-icon clip"></div>
+              <span class="name">ai paste</span>
+              <span class="star">★</span>
+              <span class="time">45m ago</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="body">→ Developer ID</div>
+            <div class="meta">
+              <div class="app-icon term"></div>
+              <span class="name">iTerm2</span>
+              <span class="star">★</span>
+              <span class="time">15h ago</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="body mono url">https://x.ai/build/changelog</div>
+            <div class="note">测试 cccccjji</div>
+            <div class="meta">
+              <div class="app-icon"></div>
+              <span class="name">Google Chrome</span>
+              <span class="star">★</span>
+              <span class="time">1h ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="caption">
+        <strong>问题：</strong>三等分网格导致中部控件群视觉漂移；星 / App 与搜索形态分裂；
+        品牌无 icon；齿轮圆角方块与胶囊 chip 不统一；宽屏两侧空气过大。
+      </p>
+    </section>
+
+    <!-- ════════ AFTER (hero full panel) ════════ -->
+    <section class="section">
+      <div class="section-label">
+        <h2>Proposed</h2>
+        <span class="tag good">After · default + focused</span>
+      </div>
+      <div class="workbench">
+        <div class="toolbar-after">
+          <div class="brand">
+            <div class="brand-icon" title="ai paste"></div>
+            <div class="brand-wordmark">
+              <span class="ai">ai</span><span class="paste">paste</span>
+            </div>
+          </div>
+
+          <div class="spacer"></div>
+
+          <div class="cluster focused" title="Unified filter cluster">
+            <div class="cluster-input">
+              <span class="mag">⌕</span>
+              <input type="text" placeholder="搜索历史…" readonly />
+              <span class="cluster-count" title="3 items in history">3</span>
+            </div>
+            <div class="cluster-divider"></div>
+            <div class="cluster-tail">
+              <button class="cluster-btn" type="button" title="Show favorites only">
+                <span class="ico">☆</span>
+              </button>
+              <div class="cluster-divider"></div>
+              <button class="cluster-btn" type="button" title="Filter by source app">
+                <span class="app-dot generic"></span>
+                Apps
+                <span class="caret">▾</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="spacer"></div>
+
+          <div class="overflow-btn" title="More — Settings, Clear History, Quit">⋯</div>
+        </div>
+
+        <div class="gallery">
+          <div class="card selected">
+            <div class="thumb">
+              <div class="fake-ui">
+                <div class="bar w60"></div>
+                <div class="bar"></div>
+                <div class="bar w40"></div>
+                <div class="bar blue"></div>
+                <div class="bar"></div>
+                <div class="bar red"></div>
+              </div>
+            </div>
+            <div class="meta">
+              <div class="app-icon clip"></div>
+              <span class="name">ai paste</span>
+              <span class="star">★</span>
+              <span class="time">45m ago</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="body">→ Developer ID</div>
+            <div class="meta">
+              <div class="app-icon term"></div>
+              <span class="name">iTerm2</span>
+              <span class="star">★</span>
+              <span class="time">15h ago</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="body mono url">https://x.ai/build/changelog</div>
+            <div class="note">测试 cccccjji</div>
+            <div class="meta">
+              <div class="app-icon"></div>
+              <span class="name">Google Chrome</span>
+              <span class="star">★</span>
+              <span class="time">1h ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="anatomy">[ Icon · ai paste ]     [ ⌕  搜索历史…     3  │  ☆  │  Apps ▾ ]     [ ⋯ ]
+   品牌锚点                    单一筛选簇（输入 + 计数 + 尾部分区）          溢出
+</div>
+    </section>
+
+    <!-- ════════ STATE VARIANTS ════════ -->
+    <section class="section">
+      <div class="section-label">
+        <h2>States</h2>
+        <span class="tag blue">Interactive variants</span>
+      </div>
+      <div class="states">
+
+        <!-- idle -->
+        <div class="state-row">
+          <div class="state-title">01 · Idle（未聚焦、无筛选）</div>
+          <div class="workbench">
+            <div class="toolbar-after">
+              <div class="brand">
+                <div class="brand-icon"></div>
+                <div class="brand-wordmark">
+                  <span class="ai">ai</span><span class="paste">paste</span>
+                </div>
+              </div>
+              <div class="spacer"></div>
+              <div class="cluster">
+                <div class="cluster-input">
+                  <span class="mag">⌕</span>
+                  <input type="text" placeholder="搜索历史…" readonly />
+                  <span class="cluster-count">12</span>
+                </div>
+                <div class="cluster-divider"></div>
+                <div class="cluster-tail">
+                  <button class="cluster-btn" type="button"><span class="ico">☆</span></button>
+                  <div class="cluster-divider"></div>
+                  <button class="cluster-btn" type="button">
+                    <span class="app-dot generic"></span>
+                    Apps
+                    <span class="caret">▾</span>
+                  </button>
+                </div>
+              </div>
+              <div class="spacer"></div>
+              <div class="overflow-btn">⋯</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- favorites on -->
+        <div class="state-row">
+          <div class="state-title">02 · Favorites 激活</div>
+          <div class="workbench">
+            <div class="toolbar-after">
+              <div class="brand">
+                <div class="brand-icon"></div>
+                <div class="brand-wordmark">
+                  <span class="ai">ai</span><span class="paste">paste</span>
+                </div>
+              </div>
+              <div class="spacer"></div>
+              <div class="cluster active-filters">
+                <div class="cluster-input">
+                  <span class="mag">⌕</span>
+                  <input type="text" placeholder="搜索历史…" readonly />
+                  <span class="cluster-count" title="3 matching favorites">3</span>
+                </div>
+                <div class="cluster-divider"></div>
+                <div class="cluster-tail">
+                  <button class="cluster-btn star-on" type="button" title="Favorites only">
+                    <span class="ico">★</span>
+                    Favorites
+                  </button>
+                  <div class="cluster-divider"></div>
+                  <button class="cluster-btn" type="button">
+                    <span class="app-dot generic"></span>
+                    Apps
+                    <span class="caret">▾</span>
+                  </button>
+                  <div class="cluster-divider"></div>
+                  <button class="cluster-btn clear" type="button" title="Clear all filters">✕</button>
+                </div>
+              </div>
+              <div class="spacer"></div>
+              <div class="overflow-btn">⋯</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- app filter on -->
+        <div class="state-row">
+          <div class="state-title">03 · App 筛选激活（Chrome）</div>
+          <div class="workbench">
+            <div class="toolbar-after">
+              <div class="brand">
+                <div class="brand-icon"></div>
+                <div class="brand-wordmark">
+                  <span class="ai">ai</span><span class="paste">paste</span>
+                </div>
+              </div>
+              <div class="spacer"></div>
+              <div class="cluster active-filters">
+                <div class="cluster-input">
+                  <span class="mag">⌕</span>
+                  <input type="text" placeholder="搜索历史…" readonly />
+                  <span class="cluster-count">5</span>
+                </div>
+                <div class="cluster-divider"></div>
+                <div class="cluster-tail">
+                  <button class="cluster-btn" type="button"><span class="ico">☆</span></button>
+                  <div class="cluster-divider"></div>
+                  <button class="cluster-btn app-on" type="button">
+                    <span class="app-dot"></span>
+                    Chrome
+                    <span class="caret">▾</span>
+                  </button>
+                  <div class="cluster-divider"></div>
+                  <button class="cluster-btn clear" type="button" title="Clear all filters">✕</button>
+                </div>
+              </div>
+              <div class="spacer"></div>
+              <div class="overflow-btn">⋯</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- query + toast -->
+        <div class="state-row">
+          <div class="state-title">04 · 有搜索词 + 成功 Toast</div>
+          <div class="workbench">
+            <div class="toolbar-after">
+              <div class="brand">
+                <div class="brand-icon"></div>
+                <div class="brand-wordmark">
+                  <span class="ai">ai</span><span class="paste">paste</span>
+                </div>
+                <div class="toast"><span class="check">✓</span> Copied</div>
+              </div>
+              <div class="spacer"></div>
+              <div class="cluster focused">
+                <div class="cluster-input">
+                  <span class="mag">⌕</span>
+                  <input type="text" value="changelog" readonly />
+                  <span class="cluster-count" title="1 match">1</span>
+                </div>
+                <div class="cluster-divider"></div>
+                <div class="cluster-tail">
+                  <button class="cluster-btn" type="button"><span class="ico">☆</span></button>
+                  <div class="cluster-divider"></div>
+                  <button class="cluster-btn" type="button">
+                    <span class="app-dot generic"></span>
+                    Apps
+                    <span class="caret">▾</span>
+                  </button>
+                </div>
+              </div>
+              <div class="spacer"></div>
+              <div class="overflow-btn">⋯</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ════════ CALLOUTS ════════ -->
+    <section class="section">
+      <div class="section-label">
+        <h2>Implementation notes</h2>
+      </div>
+      <div class="callouts">
+        <div class="callout">
+          <h3>布局</h3>
+          <p>
+            放弃三等分 <code>1fr · auto · 1fr</code>。
+            改用 <code>brand · Spacer · cluster · Spacer · overflow</code>，
+            宽屏时筛选簇稳居光学中心，左右锚点不漂移。
+          </p>
+        </div>
+        <div class="callout">
+          <h3>筛选簇</h3>
+          <p>
+            单一 12pt 圆角容器：输入区弹性拉伸，尾部固定分区。
+            收藏 / App 用竖线分隔，不再各做一颗独立 pill。
+            Focus 时整条共享 AI 渐变描边。
+          </p>
+        </div>
+        <div class="callout">
+          <h3>品牌与溢出</h3>
+          <p>
+            左侧 18pt App Icon + wordmark。
+            右侧 <code>⋯</code> 菜单承载设置 / 清空历史 / 退出；
+            与簇同高（34），圆角 10，材质一致。
+          </p>
+        </div>
+      </div>
+      <p class="caption" style="margin-top:16px">
+        <strong>尺寸建议：</strong>
+        簇 min 360 / ideal 480–520 / max 560 · 工具条内容高 34 ·
+        面板水平 padding 16 · 工具条→卡片 14 · 数量用 tabular nums。
+        Placeholder 建议 <code>搜索历史…</code> / 英文 <code>Search history…</code>。
+      </p>
+    </section>
+  </div>
+</body>
+</html>
