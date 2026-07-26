@@ -2,6 +2,8 @@ import AppKit
 import SwiftUI
 
 struct HistoryCardView: View {
+    @Environment(\.colorSchemeContrast) private var accessibilityContrast
+
     let snippet: Snippet
     let image: NSImage?
     let isSelected: Bool
@@ -13,11 +15,14 @@ struct HistoryCardView: View {
     let onDelete: () -> Void
     /// Settings language; defaults to current preference when not passed.
     var language: AppLanguage = L10n.language
+    let theme: WorkbenchTheme
 
     /// Ensures we only select once per press (DragGesture.onChanged fires repeatedly).
     @State private var selectSentForCurrentPress = false
 
     private var s: WorkbenchStrings { L10n.workbench(language) }
+    private var style: WorkbenchThemeStyle { theme.style }
+    private var increaseContrast: Bool { accessibilityContrast == .increased }
 
     var body: some View {
         cardContent
@@ -67,28 +72,36 @@ struct HistoryCardView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             Divider()
+                .overlay(style.dividerColor)
 
             HStack(spacing: 5) {
                 sourceAppIcon
                 // With a pin note: keep app icon, replace app name with the note label.
                 if let note = displayPinNote {
                     Text(note)
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(Color.orange)
+                        .font(
+                            .system(
+                                size: 10,
+                                weight: .semibold,
+                                design: metadataFontDesign
+                            )
+                        )
+                        .foregroundStyle(style.cardMetadataText)
                         .lineLimit(1)
                         .help(metaSourceHelp)
                         .accessibilityLabel(s.noteA11y(note: note, source: sourceAppDisplayName))
                 } else {
                     Text(sourceAppDisplayName)
+                        .font(metadataFont)
                         .lineLimit(1)
                 }
                 if snippet.kind == .mixed {
                     Text(s.mixedBadge)
                         .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(style.mixedBadgeText)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1)
-                        .background(Color.accentColor.opacity(0.12), in: Capsule())
+                        .background(style.mixedBadgeBackground, in: Capsule())
                 }
                 Spacer(minLength: 4)
                 if snippet.isPinned {
@@ -98,31 +111,57 @@ struct HistoryCardView: View {
                         .accessibilityLabel(s.favoriteA11y)
                 }
                 Text(Self.relativeLabel(for: snippet.updatedAt))
+                    .font(metadataFont)
                     .lineLimit(1)
             }
             .font(.system(size: 10))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(style.cardMetadataText)
         }
         .padding(12)
         .frame(width: 210, height: 190)
-        // Fill never depends on selection — only the border color does.
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(nsColor: .controlBackgroundColor))
+            RoundedRectangle(cornerRadius: style.cardCornerRadius, style: .continuous)
+                .fill(isSelected ? style.selectedCardColor : style.cardColor)
         )
+        .overlay(alignment: .leading) {
+            if isSelected && style.selectionLeadingBarWidth > 0 {
+                RoundedRectangle(
+                    cornerRadius: style.selectionLeadingBarWidth / 2,
+                    style: .continuous
+                )
+                .fill(style.accent)
+                .frame(width: style.selectionLeadingBarWidth)
+                .padding(.vertical, 12)
+            }
+        }
         .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: style.cardCornerRadius, style: .continuous)
                 .strokeBorder(
-                    isSelected ? Color.accentColor : Color.primary.opacity(0.10),
-                    lineWidth: 2
+                    isSelected ? style.accent : cardBorderColor,
+                    lineWidth: workbenchOutlineWidth(
+                        isSelected ? style.selectionLineWidth : style.normalCardLineWidth,
+                        increaseContrast: increaseContrast
+                    )
                 )
         }
-        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(
+            color: style.cardShadow.color,
+            radius: style.cardShadow.radius,
+            y: style.cardShadow.y
+        )
+        .contentShape(
+            RoundedRectangle(cornerRadius: style.cardCornerRadius, style: .continuous)
+        )
+    }
+
+    private var cardBorderColor: Color {
+        increaseContrast ? style.primaryText.opacity(0.20) : style.borderColor
     }
 
     private var textContent: some View {
         Text(snippet.textBody ?? snippet.previewText)
             .font(.system(size: 12, weight: .regular))
+            .foregroundStyle(style.primaryText)
             .lineSpacing(1)
             .lineLimit(10)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -135,6 +174,7 @@ struct HistoryCardView: View {
                 .frame(maxHeight: 96)
             Text(snippet.textBody ?? snippet.previewText)
                 .font(.system(size: 11, weight: .regular))
+                .foregroundStyle(style.primaryText)
                 .lineSpacing(1)
                 .lineLimit(4)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -150,7 +190,9 @@ struct HistoryCardView: View {
                 .interpolation(.high)
                 .scaledToFit()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .clipShape(
+                    RoundedRectangle(cornerRadius: style.imageCornerRadius, style: .continuous)
+                )
         } else {
             VStack(spacing: 8) {
                 Image(systemName: "photo")
@@ -158,7 +200,7 @@ struct HistoryCardView: View {
                 Text(s.imageUnavailable)
                     .font(.caption)
             }
-            .foregroundStyle(.secondary)
+            .foregroundStyle(style.secondaryText)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
@@ -189,15 +231,25 @@ struct HistoryCardView: View {
                 .interpolation(.high)
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 12, height: 12)
-                .clipShape(RoundedRectangle(cornerRadius: 2.5, style: .continuous))
+                .clipShape(
+                    RoundedRectangle(cornerRadius: style.imageCornerRadius, style: .continuous)
+                )
                 .help(metaSourceHelp)
         } else {
             Image(systemName: "app.fill")
                 .font(.system(size: 10))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(style.secondaryText)
                 .frame(width: 12, height: 12)
                 .help(metaSourceHelp)
         }
+    }
+
+    private var metadataFont: Font {
+        .system(size: 10, design: metadataFontDesign)
+    }
+
+    private var metadataFontDesign: Font.Design {
+        style.usesMonospacedMetadata ? .monospaced : .default
     }
 
     private static let relativeFormatter: RelativeDateTimeFormatter = {

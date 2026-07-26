@@ -12,6 +12,7 @@ final class PreferencesWindowController {
         ignoreRules: IgnoreRuleStore,
         store: SnippetStore,
         onHotKeyChanged: @escaping (HotKeyConfig) -> Bool = { _ in true },
+        onThemeChanged: @escaping (WorkbenchTheme) -> Void = { _ in },
         onQuit: @escaping () -> Void = {}
     ) {
         let model = PreferencesViewModel(
@@ -19,6 +20,7 @@ final class PreferencesWindowController {
             ignoreRules: ignoreRules,
             store: store,
             onHotKeyChanged: onHotKeyChanged,
+            onThemeChanged: onThemeChanged,
             onQuit: onQuit
         )
         self.model = model

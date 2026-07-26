@@ -126,6 +126,19 @@ final class HistoryViewModelTests: XCTestCase {
         XCTAssertFalse(model.hasActiveFilters)
     }
 
+    func testThemeChangePreservesQueryFiltersAndSelection() {
+        model.query = "new"
+        model.setFavoritesOnly(true)
+        let selected = model.selectedID
+
+        model.setTheme(.graphite)
+
+        XCTAssertEqual(model.theme, .graphite)
+        XCTAssertEqual(model.query, "new")
+        XCTAssertTrue(model.favoritesOnly)
+        XCTAssertEqual(model.selectedID, selected)
+    }
+
     func testImageLoadsFromMediaStoreAsynchronously() async throws {
         let bitmap = NSBitmapImageRep(
             bitmapDataPlanes: nil,

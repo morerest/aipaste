@@ -3,6 +3,10 @@ import SwiftUI
 
 struct HistoryView: View {
     @ObservedObject var model: HistoryViewModel
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var accessibilityContrast
+    @Environment(\.colorScheme) private var systemColorScheme
+
     let onClose: () -> Void
     let onPasteAndClose: () -> Void
     let onShowPreferences: () -> Void
@@ -27,11 +31,16 @@ struct HistoryView: View {
         self.onQuit = onQuit
     }
 
-    private let workbenchCornerRadius: CGFloat = 24
     private let clusterHeight: CGFloat = 34
-    private let clusterCornerRadius: CGFloat = 12
 
     private var s: WorkbenchStrings { L10n.workbench(model.language) }
+    private var themeStyle: WorkbenchThemeStyle { model.theme.style }
+    private var increaseContrast: Bool { accessibilityContrast == .increased }
+
+    /// Retain the existing macOS tint for System Glass while custom skins use their fixed accent.
+    private var selectionAccent: Color {
+        themeStyle.usesSystemGlass ? Color.accentColor : themeStyle.accent
+    }
 
     var body: some View {
         VStack(spacing: 14) {
@@ -46,14 +55,34 @@ struct HistoryView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .background {
-            WorkbenchGlassBackground(cornerRadius: workbenchCornerRadius)
+            WorkbenchGlassBackground(
+                style: themeStyle,
+                reduceTransparency: reduceTransparency,
+                increaseContrast: increaseContrast
+            )
         }
-        .clipShape(RoundedRectangle(cornerRadius: workbenchCornerRadius, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: themeStyle.panelCornerRadius, style: .continuous))
         // Soft lift so the floating strip separates from the desktop without a hard slab.
-        .shadow(color: .black.opacity(0.10), radius: 2, y: 1)
-        .shadow(color: .black.opacity(0.18), radius: 28, y: 12)
-        .shadow(color: .black.opacity(0.06), radius: 1, y: 0)
+        .shadow(
+            color: themeStyle.usesSystemGlass ? .black.opacity(0.10) : .clear,
+            radius: themeStyle.usesSystemGlass ? 2 : 0,
+            y: themeStyle.usesSystemGlass ? 1 : 0
+        )
+        .shadow(
+            color: themeStyle.panelShadow.color,
+            radius: themeStyle.panelShadow.radius,
+            y: themeStyle.panelShadow.y
+        )
+        .shadow(
+            color: themeStyle.usesSystemGlass ? .black.opacity(0.06) : .clear,
+            radius: themeStyle.usesSystemGlass ? 1 : 0,
+            y: 0
+        )
         .padding(2)
+        .environment(
+            \.colorScheme,
+            themeStyle.interfaceColorScheme ?? systemColorScheme
+        )
         // Rebuild chrome when Settings language changes (picked up on reload/show).
         .id(model.language)
         .onAppear {
@@ -104,7 +133,7 @@ struct HistoryView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 4.5, style: .continuous))
                 .shadow(color: .black.opacity(0.12), radius: 1, y: 0.5)
 
-            BrandWordmark(fontSize: 14)
+            BrandWordmark(fontSize: 14, themeStyle: themeStyle)
                 .fixedSize(horizontal: true, vertical: false)
         }
         .accessibilityElement(children: .ignore)
@@ -131,11 +160,13 @@ struct HistoryView: View {
         .frame(height: clusterHeight)
         .background { clusterBackground }
         .overlay { clusterBorder }
-        .clipShape(RoundedRectangle(cornerRadius: clusterCornerRadius, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: themeStyle.controlCornerRadius, style: .continuous))
         .shadow(
             color: searchFocused
-                ? BrandPalette.aiColors[1].opacity(0.18)
-                : .black.opacity(0.03),
+                ? (themeStyle.usesSystemGlass
+                    ? BrandPalette.aiColors[1].opacity(0.18)
+                    : themeStyle.accent.opacity(0.18))
+                : (themeStyle.usesSystemGlass ? .black.opacity(0.03) : .clear),
             radius: searchFocused ? 10 : 1,
             y: searchFocused ? 1 : 0
         )
@@ -151,6 +182,7 @@ struct HistoryView: View {
             TextField(s.searchPlaceholder, text: $model.query)
                 .textFieldStyle(.plain)
                 .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(themeStyle.primaryText)
                 .focused($searchFocused)
 
             if !model.query.isEmpty {
@@ -161,7 +193,7 @@ struct HistoryView: View {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 12))
                         .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(themeStyle.secondaryText)
                 }
                 .buttonStyle(.plain)
                 .help(s.clearSearchHelp)
@@ -171,12 +203,12 @@ struct HistoryView: View {
             Text("\(model.snippets.count)")
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(searchFocused ? Color.primary.opacity(0.72) : Color.secondary)
+                .foregroundStyle(themeStyle.compactChromeText(increaseContrast: increaseContrast))
                 .padding(.horizontal, 7)
                 .padding(.vertical, 2)
                 .background(
                     Capsule(style: .continuous)
-                        .fill(Color.primary.opacity(searchFocused ? 0.10 : 0.06))
+                        .fill(themeStyle.primaryText.opacity(searchFocused ? 0.10 : 0.06))
                 )
                 .help(model.hasActiveFilters ? s.matchingItemsHelp : s.itemsInHistoryHelp)
         }
@@ -194,7 +226,7 @@ struct HistoryView: View {
         } label: {
             Image(systemName: model.favoritesOnly ? "star.fill" : "star")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(model.favoritesOnly ? Color.orange : Color.secondary)
+                .foregroundStyle(model.favoritesOnly ? Color.orange : themeStyle.secondaryText)
                 .frame(width: 36, height: clusterHeight)
                 .contentShape(Rectangle())
                 .background(
@@ -251,14 +283,18 @@ struct HistoryView: View {
                     .opacity(0.55)
             }
             .font(.system(size: 11, weight: model.sourceAppFilter == nil ? .medium : .semibold))
-            .foregroundStyle(model.sourceAppFilter == nil ? Color.secondary : Color.accentColor)
+            .foregroundStyle(
+                model.sourceAppFilter == nil
+                    ? themeStyle.compactChromeText(increaseContrast: increaseContrast)
+                    : themeStyle.selectedCompactChromeText(increaseContrast: increaseContrast)
+            )
             .padding(.horizontal, 10)
             .frame(height: clusterHeight)
             .contentShape(Rectangle())
             .background(
                 model.sourceAppFilter == nil
                     ? Color.clear
-                    : Color.accentColor.opacity(0.08)
+                    : selectionAccent.opacity(0.08)
             )
         }
         .font(.system(size: 12))
@@ -269,22 +305,27 @@ struct HistoryView: View {
 
     private var clusterDivider: some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.08))
+            .fill(themeStyle.dividerColor)
             .frame(width: 1)
             .padding(.vertical, 7)
     }
 
+    @ViewBuilder
     private var clusterBackground: some View {
-        RoundedRectangle(cornerRadius: clusterCornerRadius, style: .continuous)
-            .fill(.ultraThinMaterial)
-            .overlay {
-                RoundedRectangle(cornerRadius: clusterCornerRadius, style: .continuous)
-                    .fill(Color.primary.opacity(searchFocused ? 0.05 : 0.02))
-            }
-            .overlay {
-                if searchFocused {
-                    RoundedRectangle(cornerRadius: clusterCornerRadius, style: .continuous)
-                        .fill(
+        let shape = RoundedRectangle(
+            cornerRadius: themeStyle.controlCornerRadius,
+            style: .continuous
+        )
+
+        if themeStyle.usesSystemGlass && !reduceTransparency {
+            shape
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    shape.fill(Color.primary.opacity(searchFocused ? 0.05 : 0.02))
+                }
+                .overlay {
+                    if searchFocused {
+                        shape.fill(
                             RadialGradient(
                                 colors: [
                                     BrandPalette.aiColors[0].opacity(0.10),
@@ -296,34 +337,71 @@ struct HistoryView: View {
                                 endRadius: 140
                             )
                         )
+                    }
                 }
-            }
+        } else {
+            shape
+                .fill(themeStyle.controlColor)
+                .overlay {
+                    if searchFocused {
+                        shape.fill(themeStyle.accent.opacity(0.08))
+                    }
+                }
+        }
     }
 
     @ViewBuilder
     private var clusterBorder: some View {
+        let shape = RoundedRectangle(
+            cornerRadius: themeStyle.controlCornerRadius,
+            style: .continuous
+        )
+
         if searchFocused {
-            RoundedRectangle(cornerRadius: clusterCornerRadius, style: .continuous)
-                .strokeBorder(BrandPalette.aiStrokeGradient, lineWidth: 1.5)
+            if themeStyle.usesSystemGlass {
+                shape.strokeBorder(
+                    BrandPalette.aiStrokeGradient,
+                    lineWidth: workbenchOutlineWidth(1.5, increaseContrast: increaseContrast)
+                )
+            } else {
+                shape.strokeBorder(
+                    themeStyle.accent.opacity(increaseContrast ? 0.85 : 0.58),
+                    lineWidth: workbenchOutlineWidth(1.5, increaseContrast: increaseContrast)
+                )
+            }
         } else if model.hasActiveFilters {
-            RoundedRectangle(cornerRadius: clusterCornerRadius, style: .continuous)
-                .strokeBorder(Color.accentColor.opacity(0.28), lineWidth: 1)
+            shape.strokeBorder(
+                selectionAccent.opacity(increaseContrast ? 0.60 : 0.28),
+                lineWidth: workbenchOutlineWidth(1, increaseContrast: increaseContrast)
+            )
         } else {
-            RoundedRectangle(cornerRadius: clusterCornerRadius, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+            shape.strokeBorder(
+                increaseContrast
+                    ? themeStyle.primaryText.opacity(0.20)
+                    : (themeStyle.usesSystemGlass
+                        ? Color.primary.opacity(0.08)
+                        : themeStyle.borderColor),
+                lineWidth: workbenchOutlineWidth(1, increaseContrast: increaseContrast)
+            )
         }
     }
 
     @ViewBuilder
     private var searchMagnifier: some View {
         if searchFocused {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(BrandPalette.aiGradient)
+            if themeStyle.usesSystemGlass {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(BrandPalette.aiGradient)
+            } else {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(themeStyle.accent)
+            }
         } else {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(themeStyle.secondaryText)
         }
     }
 
@@ -351,7 +429,7 @@ struct HistoryView: View {
         } else {
             Image(systemName: "app.fill")
                 .font(.system(size: pointSize * 0.72))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(themeStyle.secondaryText)
                 .frame(width: pointSize, height: pointSize)
         }
     }
@@ -367,18 +445,46 @@ struct HistoryView: View {
         } label: {
             Image(systemName: "ellipsis")
                 .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(themeStyle.secondaryText)
                 .frame(width: clusterHeight, height: clusterHeight)
                 .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background { overflowBackground }
         .overlay {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: overflowCornerRadius, style: .continuous)
+                .strokeBorder(overflowBorderColor, lineWidth: overflowBorderWidth)
         }
         .help(s.moreHelp)
         .accessibilityLabel(s.moreHelp)
+    }
+
+    private var overflowCornerRadius: CGFloat {
+        themeStyle.usesSystemGlass ? 10 : themeStyle.controlCornerRadius
+    }
+
+    @ViewBuilder
+    private var overflowBackground: some View {
+        let shape = RoundedRectangle(cornerRadius: overflowCornerRadius, style: .continuous)
+        if themeStyle.usesSystemGlass && !reduceTransparency {
+            shape.fill(.thinMaterial)
+        } else {
+            shape.fill(themeStyle.controlColor)
+        }
+    }
+
+    private var overflowBorderColor: Color {
+        if increaseContrast {
+            return themeStyle.primaryText.opacity(0.20)
+        }
+        return themeStyle.usesSystemGlass ? Color.primary.opacity(0.08) : themeStyle.borderColor
+    }
+
+    private var overflowBorderWidth: CGFloat {
+        workbenchOutlineWidth(
+            themeStyle.usesSystemGlass ? 0.5 : 1,
+            increaseContrast: increaseContrast
+        )
     }
 
     // MARK: - Gallery
@@ -421,7 +527,8 @@ struct HistoryView: View {
                                 model.selectedID = snippet.id
                                 model.deleteSelected()
                             },
-                            language: model.language
+                            language: model.language,
+                            theme: model.theme
                         )
                         .id(snippet.id)
                         .task(id: snippet.id) {
@@ -452,7 +559,7 @@ struct HistoryView: View {
             Text(emptyStateBody)
                 .font(.caption)
         }
-        .foregroundStyle(.secondary)
+        .foregroundStyle(themeStyle.compactChromeText(increaseContrast: increaseContrast))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -500,18 +607,18 @@ struct HistoryView: View {
         HStack(spacing: 5) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(selectionAccent)
             Text(message)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(themeStyle.compactChromeText(increaseContrast: increaseContrast))
                 .lineLimit(1)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
-        .background(Capsule(style: .continuous).fill(.thinMaterial))
+        .background { statusPillBackground }
         .overlay {
             Capsule(style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+                .strokeBorder(statusPillBorderColor, lineWidth: statusPillBorderWidth)
         }
         .fixedSize(horizontal: true, vertical: false)
         .help(message)
@@ -522,12 +629,12 @@ struct HistoryView: View {
         HStack(spacing: 8) {
             Image(systemName: "hand.raised.circle.fill")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Color.accentColor.opacity(0.9))
+                .foregroundStyle(Color.orange.opacity(0.9))
                 .symbolRenderingMode(.hierarchical)
 
             Text(message)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(themeStyle.compactChromeText(increaseContrast: increaseContrast))
                 .lineLimit(1)
 
             Button {
@@ -535,22 +642,47 @@ struct HistoryView: View {
             } label: {
                 Text(s.openSettingsLink)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(accessibilityActionColor)
             }
             .buttonStyle(.plain)
             .help(s.openAccessibilityHelp)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
-        .background {
-            Capsule(style: .continuous)
-                .fill(.thinMaterial)
-        }
+        .background { statusPillBackground }
         .overlay {
             Capsule(style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+                .strokeBorder(statusPillBorderColor, lineWidth: statusPillBorderWidth)
         }
         .fixedSize(horizontal: true, vertical: false)
         .help(message)
+    }
+
+    @ViewBuilder
+    private var statusPillBackground: some View {
+        let capsule = Capsule(style: .continuous)
+        if themeStyle.usesSystemGlass && !reduceTransparency {
+            capsule.fill(.thinMaterial)
+        } else {
+            capsule.fill(themeStyle.controlColor)
+        }
+    }
+
+    private var statusPillBorderColor: Color {
+        if increaseContrast {
+            return themeStyle.primaryText.opacity(0.20)
+        }
+        return themeStyle.usesSystemGlass ? Color.primary.opacity(0.08) : themeStyle.borderColor
+    }
+
+    private var statusPillBorderWidth: CGFloat {
+        workbenchOutlineWidth(
+            themeStyle.usesSystemGlass ? 0.5 : 1,
+            increaseContrast: increaseContrast
+        )
+    }
+
+    private var accessibilityActionColor: Color {
+        themeStyle.usesSystemGlass ? Color.accentColor : themeStyle.primaryText
     }
 }

@@ -27,6 +27,9 @@ final class PreferencesViewHostingTests: XCTestCase {
             ignoreRules: ignore,
             store: store
         )
+        model.setWorkbenchTheme(.graphite)
+        XCTAssertEqual(model.workbenchTheme, .graphite)
+        XCTAssertEqual(prefs.workbenchTheme, .graphite)
 
         // Force candidate evaluation (menu body paths).
         _ = model.runningAppCandidates
@@ -39,6 +42,7 @@ final class PreferencesViewHostingTests: XCTestCase {
         hosting.loadView()
         hosting.view.frame = NSRect(x: 0, y: 0, width: 520, height: 600)
         hosting.view.layoutSubtreeIfNeeded()
+        XCTAssertGreaterThan(hosting.view.fittingSize.height, 0)
 
         // Open a real window like PreferencesWindowController does.
         let window = NSWindow(

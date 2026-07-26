@@ -19,14 +19,19 @@ final class HistoryPanelController: NSObject {
     func configure(
         store: SnippetStore,
         pasteEngine: PasteEngine,
+        initialTheme: WorkbenchTheme,
         onShowPreferences: @escaping () -> Void,
         onClearHistory: @escaping () -> Void = {},
         onQuit: @escaping () -> Void = {}
     ) {
-        model = HistoryViewModel(store: store, pasteEngine: pasteEngine)
+        model = HistoryViewModel(store: store, pasteEngine: pasteEngine, theme: initialTheme)
         self.onShowPreferences = onShowPreferences
         self.onClearHistory = onClearHistory
         self.onQuit = onQuit
+    }
+
+    func setTheme(_ theme: WorkbenchTheme) {
+        model?.setTheme(theme)
     }
 
     func toggle() {

@@ -22,11 +22,13 @@ final class PreferencesViewModel: ObservableObject {
     @Published var hotKey: HotKeyConfig
     @Published var isRecordingHotKey = false
     @Published var hotKeyStatusMessage: String?
+    @Published var workbenchTheme: WorkbenchTheme
 
     private let preferences: AppPreferences
     private let ignoreRules: IgnoreRuleStore
     private let store: SnippetStore
     private let onHotKeyChanged: (HotKeyConfig) -> Bool
+    private let onThemeChanged: (WorkbenchTheme) -> Void
     private let onQuit: () -> Void
     private var ignoreStatusResetTask: Task<Void, Never>?
 
@@ -69,12 +71,14 @@ final class PreferencesViewModel: ObservableObject {
         ignoreRules: IgnoreRuleStore,
         store: SnippetStore,
         onHotKeyChanged: @escaping (HotKeyConfig) -> Bool = { _ in true },
+        onThemeChanged: @escaping (WorkbenchTheme) -> Void = { _ in },
         onQuit: @escaping () -> Void = {}
     ) {
         self.preferences = preferences
         self.ignoreRules = ignoreRules
         self.store = store
         self.onHotKeyChanged = onHotKeyChanged
+        self.onThemeChanged = onThemeChanged
         self.onQuit = onQuit
         maxSnippetCount = preferences.maxSnippetCount
         maxFavoriteCount = preferences.maxFavoriteCount
@@ -82,6 +86,7 @@ final class PreferencesViewModel: ObservableObject {
         ignoredApps = Self.makeIgnoredItems(from: ignoreRules.list(), ignoreRules: ignoreRules)
         language = preferences.appLanguage
         hotKey = preferences.toggleHistoryHotKey
+        workbenchTheme = preferences.workbenchTheme
         isAccessibilityTrusted = preferences.accessibilityTrusted
     }
 
@@ -111,6 +116,13 @@ final class PreferencesViewModel: ObservableObject {
         guard self.language != language else { return }
         self.language = language
         applyLanguage()
+    }
+
+    func setWorkbenchTheme(_ theme: WorkbenchTheme) {
+        guard workbenchTheme != theme else { return }
+        workbenchTheme = theme
+        preferences.workbenchTheme = theme
+        onThemeChanged(theme)
     }
 
     func beginHotKeyRecording() {

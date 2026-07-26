@@ -28,6 +28,7 @@ final class AppPreferences {
             AppConstants.DefaultsKey.launchAtLogin,
             AppConstants.DefaultsKey.appLanguage,
             AppConstants.DefaultsKey.toggleHistoryHotKey,
+            AppConstants.DefaultsKey.workbenchTheme,
         ]
         for key in keys where defaults.object(forKey: key) == nil {
             if let value = suite.object(forKey: key) {
@@ -100,6 +101,18 @@ final class AppPreferences {
             if let data = try? JSONEncoder().encode(newValue) {
                 defaults.set(data, forKey: AppConstants.DefaultsKey.toggleHistoryHotKey)
             }
+        }
+    }
+
+    var workbenchTheme: WorkbenchTheme {
+        get {
+            guard let raw = defaults.string(forKey: AppConstants.DefaultsKey.workbenchTheme),
+                  let theme = WorkbenchTheme(rawValue: raw)
+            else { return .systemGlass }
+            return theme
+        }
+        set {
+            defaults.set(newValue.rawValue, forKey: AppConstants.DefaultsKey.workbenchTheme)
         }
     }
 }

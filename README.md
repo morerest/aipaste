@@ -13,6 +13,7 @@ Clipboard contents stay on this Mac. The current release has no accounts, cloud 
 
 - Text, image, and mixed text-image clipboard history
 - Bottom-of-screen horizontal card gallery with real image thumbnails
+- Six workbench skins: Default, Warm Paper, Moss Garden, Graphite, Mist Blue, and Rose Ash
 - Search by content, source app, or favorite note
 - Source-app and favorites filters
 - Content deduplication and automatic capacity pruning
@@ -91,6 +92,7 @@ Without permission, the action degrades to copy-only and shows a non-blocking hi
 
 Settings currently include:
 
+- Workbench skin selection with immediate preview and persistence
 - Maximum regular-history size (default: 500)
 - Maximum favorites (default: 30)
 - Ignored applications, selected from running apps/history or entered by Bundle ID
@@ -99,6 +101,8 @@ Settings currently include:
 - English / Simplified Chinese language selection
 - Accessibility status and shortcut to System Settings
 - Clear history and quit actions
+
+Skins affect only the clipboard workbench. They do not alter stored clipboard data.
 
 ## Data path
 

@@ -26,6 +26,7 @@ final class HistoryViewModel: ObservableObject {
     @Published private(set) var statusIsAccessibilityHint = false
     /// Tracks Settings language so the panel chrome refreshes after a switch.
     @Published private(set) var language: AppLanguage = L10n.language
+    @Published private(set) var theme: WorkbenchTheme
     @Published private var thumbnails: [String: NSImage] = [:]
 
     private var s: WorkbenchStrings { L10n.workbench(language) }
@@ -55,8 +56,10 @@ final class HistoryViewModel: ObservableObject {
     init(
         store: SnippetStore,
         pasteEngine: PasteEngine,
+        theme: WorkbenchTheme = .systemGlass,
         thumbnailLoader: ThumbnailLoader? = nil
     ) {
+        self.theme = theme
         self.store = store
         self.pasteEngine = pasteEngine
         self.thumbnailLoader = thumbnailLoader ?? { snippet in
@@ -65,6 +68,11 @@ final class HistoryViewModel: ObservableObject {
             }
             return Self.downsampledPNGData(from: data)
         }
+    }
+
+    func setTheme(_ theme: WorkbenchTheme) {
+        guard self.theme != theme else { return }
+        self.theme = theme
     }
 
     func reload() {

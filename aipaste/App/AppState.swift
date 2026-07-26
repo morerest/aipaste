@@ -46,6 +46,7 @@ final class AppState: ObservableObject {
             historyPanel.configure(
                 store: store,
                 pasteEngine: pasteEngine,
+                initialTheme: preferences.workbenchTheme,
                 onShowPreferences: { [weak self] in self?.showPreferences() },
                 onClearHistory: { [weak self] in self?.confirmAndClearHistory() },
                 onQuit: { [weak self] in self?.quit() }
@@ -83,6 +84,9 @@ final class AppState: ObservableObject {
                     self.menuBar?.updateToolTip(hotKeyDisplay: config.displayString)
                 }
                 return ok
+            },
+            onThemeChanged: { [weak self] theme in
+                self?.historyPanel.setTheme(theme)
             },
             onQuit: { [weak self] in
                 self?.quit()

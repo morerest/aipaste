@@ -49,6 +49,25 @@ struct SettingsStrings: L10nBundle {
         t(en: "\(AppConstants.displayName) Settings", zh: "\(AppConstants.displayName) 设置")
     }
 
+    // MARK: Appearance
+
+    var appearanceSection: String { t(en: "Appearance", zh: "外观") }
+    var appearanceFooter: String {
+        t(en: "Changes the clipboard workbench only.", zh: "仅改变剪贴板工作台的外观。")
+    }
+    var selectedThemeA11y: String { t(en: "Selected", zh: "已选择") }
+
+    func workbenchThemeName(_ theme: WorkbenchTheme) -> String {
+        switch theme {
+        case .systemGlass: return t(en: "Default", zh: "默认")
+        case .warmPaper: return t(en: "Warm Paper", zh: "暖纸")
+        case .mossGarden: return t(en: "Moss Garden", zh: "苔庭")
+        case .graphite: return t(en: "Graphite", zh: "石墨")
+        case .mistBlue: return t(en: "Mist Blue", zh: "雾蓝")
+        case .roseAsh: return t(en: "Rose Ash", zh: "樱灰")
+        }
+    }
+
     // MARK: History
 
     var historySection: String { t(en: "History", zh: "历史记录") }

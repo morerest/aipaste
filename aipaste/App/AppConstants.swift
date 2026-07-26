@@ -31,5 +31,6 @@ enum AppConstants {
         static let appLanguage = "appLanguage"
         /// JSON-encoded `HotKeyConfig` for toggle-history global shortcut.
         static let toggleHistoryHotKey = "toggleHistoryHotKey"
+        static let workbenchTheme = "workbenchTheme"
     }
 }

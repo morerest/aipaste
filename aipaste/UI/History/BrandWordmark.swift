@@ -48,21 +48,49 @@ enum BrandPalette {
 /// Keeps lettering crisp at toolbar size and adapts to light/dark appearance.
 struct BrandWordmark: View {
     var fontSize: CGFloat = 15
+    var themeStyle: WorkbenchThemeStyle? = nil
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 5) {
-            Text("ai")
-                .font(.system(size: fontSize, weight: .bold, design: .rounded))
-                .tracking(-0.2)
-                .foregroundStyle(BrandPalette.aiGradient)
-                .shadow(color: Color.cyan.opacity(0.28), radius: 3, y: 0)
-
-            Text("paste")
-                .font(.system(size: fontSize, weight: .semibold, design: .rounded))
-                .tracking(-0.3)
-                .foregroundStyle(BrandPalette.pasteStyle)
+            aiWordmark
+            pasteWordmark
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(AppConstants.displayName)
+    }
+
+    private var aiLabel: some View {
+        Text("ai")
+            .font(.system(size: fontSize, weight: .bold, design: .rounded))
+            .tracking(-0.2)
+    }
+
+    @ViewBuilder
+    private var aiWordmark: some View {
+        if let themeStyle, !themeStyle.usesSystemGlass {
+            aiLabel
+                .foregroundStyle(themeStyle.accent)
+        } else {
+            aiLabel
+                .foregroundStyle(BrandPalette.aiGradient)
+                .shadow(color: Color.cyan.opacity(0.28), radius: 3, y: 0)
+        }
+    }
+
+    private var pasteLabel: some View {
+        Text("paste")
+            .font(.system(size: fontSize, weight: .semibold, design: .rounded))
+            .tracking(-0.3)
+    }
+
+    @ViewBuilder
+    private var pasteWordmark: some View {
+        if let themeStyle, !themeStyle.usesSystemGlass {
+            pasteLabel
+                .foregroundStyle(themeStyle.primaryText.opacity(0.78))
+        } else {
+            pasteLabel
+                .foregroundStyle(BrandPalette.pasteStyle)
+        }
     }
 }

@@ -11,6 +11,7 @@ struct PreferencesView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                appearanceSection
                 historySection
                 privacySection
                 systemSection
@@ -39,6 +40,31 @@ struct PreferencesView: View {
     }
 
     // MARK: - Sections
+
+    private var appearanceSection: some View {
+        SettingsCard(
+            title: s.appearanceSection,
+            systemImage: "paintpalette.fill",
+            tint: Color(red: 0.58, green: 0.38, blue: 0.82)
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                    ForEach(WorkbenchTheme.allCases) { theme in
+                        WorkbenchThemePreview(
+                            theme: theme,
+                            isSelected: model.workbenchTheme == theme,
+                            label: s.workbenchThemeName(theme),
+                            selectedLabel: s.selectedThemeA11y,
+                            onSelect: { model.setWorkbenchTheme(theme) }
+                        )
+                    }
+                }
+                Text(s.appearanceFooter)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
 
     private var historySection: some View {
         SettingsCard(

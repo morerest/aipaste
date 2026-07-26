@@ -66,6 +66,19 @@ Use this checklist after building and running aipaste from Xcode. Tick each item
 - [ ] Launch at Login can be toggled without crashing (full SMAppService behavior may require a signed build)
 - [ ] aipaste remains a menu-bar accessory without a Dock icon
 
+## Workbench skins
+
+- [ ] Settings shows six previews in this order: Default, Warm Paper, Moss Garden, Graphite, Mist Blue, Rose Ash.
+- [ ] Selecting each preview updates the next opened workbench without restarting the app.
+- [ ] The selected skin survives quit and relaunch.
+- [ ] Search text, filters, and selected card survive a live skin change.
+- [ ] Default still follows macOS Light and Dark appearances.
+- [ ] Each custom skin keeps its approved identity after switching macOS appearance.
+- [ ] Text, image, mixed, favorite-note, selected, and empty states remain readable in every skin.
+- [ ] Reduce Transparency replaces glass with an opaque theme surface.
+- [ ] Increase Contrast strengthens panel, control, and card outlines.
+- [ ] Keyboard and VoiceOver can identify and choose every skin preview.
+
 ## Automated checks
 
 ```bash
