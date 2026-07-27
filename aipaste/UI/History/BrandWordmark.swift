@@ -44,7 +44,7 @@ enum BrandPalette {
     }
 }
 
-/// Split product wordmark: "ai" (gradient accent) + "paste" (cool indigo).
+/// Split product wordmark: "AI" (gradient accent) + "paste" (cool indigo).
 /// Keeps lettering crisp at toolbar size and adapts to light/dark appearance.
 struct BrandWordmark: View {
     var fontSize: CGFloat = 15
@@ -60,7 +60,7 @@ struct BrandWordmark: View {
     }
 
     private var aiLabel: some View {
-        Text("ai")
+        Text("AI")
             .font(.system(size: fontSize, weight: .bold, design: .rounded))
             .tracking(-0.2)
     }
