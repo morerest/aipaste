@@ -45,6 +45,13 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         statusItem?.button?.toolTip = Self.toolTip(hotKeyDisplay: hotKeyDisplay)
     }
 
+    /// Screen frame of the menu-bar button — used to anchor the launch toast.
+    var statusItemScreenFrame: NSRect? {
+        guard let button = statusItem?.button, let window = button.window else { return nil }
+        let boundsInWindow = button.convert(button.bounds, to: nil)
+        return window.convertToScreen(boundsInWindow)
+    }
+
     private static func toolTip(hotKeyDisplay: String) -> String {
         "\(AppConstants.displayName) — click to open history (\(hotKeyDisplay)); right-click for menu"
     }

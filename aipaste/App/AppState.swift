@@ -13,6 +13,7 @@ final class AppState: ObservableObject {
 
     let historyPanel = HistoryPanelController()
     let preferencesWindow = PreferencesWindowController()
+    private let launchToast = LaunchToastController()
     private var menuBar: MenuBarController?
     private var hotKeys: HotKeyManager?
     private var bootstrapped = false
@@ -60,12 +61,28 @@ final class AppState: ObservableObject {
             hotKeys?.register(preferences.toggleHistoryHotKey)
             menuBar?.updateToolTip(hotKeyDisplay: preferences.toggleHistoryHotKey.displayString)
             monitor.start()
+            // Menu-bar accessory has no Dock bounce — confirm a successful start.
+            showLaunchReadyToast()
         } catch {
             NSLog("aipaste bootstrap failed: \(error)")
             let alert = NSAlert()
             alert.messageText = "\(AppConstants.displayName) failed to start"
             alert.informativeText = error.localizedDescription
             alert.runModal()
+        }
+    }
+
+    /// Brief HUD under the status item so cold launch is obviously successful.
+    private func showLaunchReadyToast() {
+        guard let preferences else { return }
+        // Let the status item land in the menu bar before measuring its frame.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.launchToast.show(
+                hotKeyDisplay: preferences.toggleHistoryHotKey.displayString,
+                theme: preferences.workbenchTheme,
+                anchorScreenFrame: self.menuBar?.statusItemScreenFrame
+            )
         }
     }
 

@@ -10,6 +10,7 @@
 		005EDCF62189157811F3A5AC /* SnippetStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A9CEF47FCE8D210B0B326EA /* SnippetStoreTests.swift */; };
 		047795EFC75A11D8AD9EDD36 /* WorkbenchThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48C20D8350A867E6A2984863 /* WorkbenchThemeTests.swift */; };
 		0B21C013FFB2D32458DF848A /* HistoryPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20483CF52C562390D74DC7A /* HistoryPanelController.swift */; };
+		134F6EF3E1D551F39027C519 /* LaunchToastController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0268CAA13721FCE4C9B8C4EF /* LaunchToastController.swift */; };
 		2A545D2E97A8C871669010A1 /* GlassChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C1EF53942450C2B27056D4 /* GlassChrome.swift */; };
 		2B94D5225B55E9C01BFBF0EE /* PreferencesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B235333BCF8783EA6C2524 /* PreferencesViewModel.swift */; };
 		2E2D395486FB640E1EC51C9A /* ContentHasherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 520023EA4036846D2A6F6E75 /* ContentHasherTests.swift */; };
@@ -70,6 +71,7 @@
 
 /* Begin PBXFileReference section */
 		023C9F3382F7C394FD300943 /* aipaste.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = aipaste.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0268CAA13721FCE4C9B8C4EF /* LaunchToastController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchToastController.swift; sourceTree = "<group>"; };
 		06BB5BCBAD4FE90A015ECA3E /* Database.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Database.swift; sourceTree = "<group>"; };
 		06DC518BB9AE6F56F49DF4EC /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		0F7E60A99F5733CB9701810D /* aipaste.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = aipaste.entitlements; sourceTree = "<group>"; };
@@ -182,6 +184,7 @@
 		7C79C72C13F5CB5A5CFA628A /* UI */ = {
 			isa = PBXGroup;
 			children = (
+				0268CAA13721FCE4C9B8C4EF /* LaunchToastController.swift */,
 				CD7C67E729F74DAB3E4848F4 /* History */,
 				61BA29554C55C9988D1FA91C /* Preferences */,
 			);
@@ -427,6 +430,7 @@
 				7FA049AC654C6A7A06A675B5 /* IgnoreRuleStore.swift in Sources */,
 				3CD25EB9BE8B7819691D30D0 /* InternalPasteboardWriteGate.swift in Sources */,
 				6E998B9D0240C3EA530C2522 /* L10n.swift in Sources */,
+				134F6EF3E1D551F39027C519 /* LaunchToastController.swift in Sources */,
 				6382BFA22D022ECFBD17FD5B /* MediaStore.swift in Sources */,
 				885FD9B4A08EB51C9EF437FB /* MenuBarController.swift in Sources */,
 				34B64D18936B89CDF9E91656 /* Models.swift in Sources */,

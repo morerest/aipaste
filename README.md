@@ -14,6 +14,9 @@ Clipboard contents stay on this Mac. The current release has no accounts, cloud 
 - Text, image, and mixed text-image clipboard history
 - Bottom-of-screen horizontal card gallery with real image thumbnails
 - Six workbench skins: Default, Warm Paper, Moss Garden, Graphite, Mist Blue, and Rose Ash
+- Settings appearance follows the selected skin (window chrome + section cards)
+- Compact skin picker: current-skin summary plus a horizontal swatch strip
+- Launch-ready toast under the menu-bar icon (menu-bar apps have no Dock bounce)
 - Search by content, source app, or favorite note
 - Source-app and favorites filters
 - Content deduplication and automatic capacity pruning
@@ -59,7 +62,7 @@ Produces **only**:
 
 After success the script deletes `build/` intermediates and does **not** leave a bare `.app` next to the zip, so Spotlight is less likely to show many aipaste copies. Pass `KEEP_BUILD=1` to retain intermediates for debugging.
 
-The app is a menu-bar accessory (`LSUIElement`). Look for the clipboard icon in the menu bar; it intentionally has no Dock icon.
+The app is a menu-bar accessory (`LSUIElement`). Look for the clipboard icon in the menu bar; it intentionally has no Dock icon. After a successful cold start, a short toast appears near the status item so launch feedback is obvious.
 
 ## Using the history gallery
 
@@ -92,7 +95,8 @@ Without permission, the action degrades to copy-only and shows a non-blocking hi
 
 Settings currently include:
 
-- Workbench skin selection with immediate preview and persistence
+- Workbench skin selection (summary + swatches) with immediate apply and persistence
+- Live theming of the Settings window itself when a skin is chosen
 - Maximum regular-history size (default: 500)
 - Maximum favorites (default: 30)
 - Ignored applications, selected from running apps/history or entered by Bundle ID
@@ -102,7 +106,15 @@ Settings currently include:
 - Accessibility status and shortcut to System Settings
 - Clear history and quit actions
 
-Skins affect only the clipboard workbench. They do not alter stored clipboard data.
+Skins change the workbench and Settings chrome. They do not alter stored clipboard data.
+
+## Recent changes
+
+- **Workbench toolbar:** keep the search/filter cluster centered; stop the overflow `···` menu from stretching on older macOS (e.g. Ventura).
+- **Skin picker:** replace the full 2×3 preview grid with a current-skin summary and circular swatches.
+- **Settings theming:** apply the selected skin to the Settings window background, cards, and accents.
+- **Launch toast:** show a short “ready” HUD under the menu-bar icon after a successful start.
+- **Settings reliability:** reuse the SwiftUI hosting controller so reopening Settings does not white-screen; avoid system focus rings on skin swatches.
 
 ## Data path
 

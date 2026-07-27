@@ -53,9 +53,11 @@ struct SettingsStrings: L10nBundle {
 
     var appearanceSection: String { t(en: "Appearance", zh: "外观") }
     var appearanceFooter: String {
-        t(en: "Changes the clipboard workbench only.", zh: "仅改变剪贴板工作台的外观。")
+        t(en: "Applies immediately to the workbench and this window.",
+          zh: "选择后立即生效，工作台与本窗口同步。")
     }
     var selectedThemeA11y: String { t(en: "Selected", zh: "已选择") }
+    var currentThemeBadge: String { t(en: "Current", zh: "当前") }
 
     func workbenchThemeName(_ theme: WorkbenchTheme) -> String {
         switch theme {
@@ -65,6 +67,29 @@ struct SettingsStrings: L10nBundle {
         case .graphite: return t(en: "Graphite", zh: "石墨")
         case .mistBlue: return t(en: "Mist Blue", zh: "雾蓝")
         case .roseAsh: return t(en: "Rose Ash", zh: "樱灰")
+        }
+    }
+
+    func workbenchThemeTagline(_ theme: WorkbenchTheme) -> String {
+        switch theme {
+        case .systemGlass:
+            return t(en: "Native glass that follows system light and dark mode.",
+                     zh: "原生玻璃，跟随系统浅色 / 深色。")
+        case .warmPaper:
+            return t(en: "Warm and quiet, with a reading-room feel.",
+                     zh: "温暖安静，有阅读感。")
+        case .mossGarden:
+            return t(en: "Natural and low-saturation for long sessions.",
+                     zh: "自然低饱和，适合长时间使用。")
+        case .graphite:
+            return t(en: "Dark and restrained, with a developer-tool vibe.",
+                     zh: "克制深色，偏开发者工具气质。")
+        case .mistBlue:
+            return t(en: "Cool, airy, and clear without neon glare.",
+                     zh: "冷静清爽，有空气感。")
+        case .roseAsh:
+            return t(en: "Soft and refined neutrals—never sugary pink.",
+                     zh: "柔和精致，中性不甜。")
         }
     }
 
@@ -276,6 +301,18 @@ struct WorkbenchStrings: L10nBundle {
     var copiedAccessibilityNeeded: String {
         t(en: "Copied · Accessibility needed to auto-paste",
           zh: "已复制 · 需要辅助功能权限才能自动粘贴")
+    }
+
+    // MARK: Launch toast
+
+    var launchReadyTitle: String {
+        t(en: "\(AppConstants.displayName) is ready",
+          zh: "\(AppConstants.displayName) 已就绪")
+    }
+
+    func launchReadyDetail(hotKeyDisplay: String) -> String {
+        t(en: "Menu bar icon is up · \(hotKeyDisplay) opens history",
+          zh: "菜单栏已出现剪贴板图标 · \(hotKeyDisplay) 打开历史")
     }
 
     // MARK: Status toasts

@@ -97,24 +97,27 @@ struct HistoryView: View {
 
     // MARK: - Toolbar
 
-    /// Brand · Spacer · unified filter cluster · Spacer · overflow
+    /// Brand / overflow on the edges; filter cluster truly centered (not Spacer-balanced).
+    /// Edge chrome uses fixedSize so borderless Menus cannot eat residual width on older macOS.
     private var toolbar: some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 8) {
-                brandHeader
-                toolbarSuccessPill
-            }
+        ZStack {
+            HStack(spacing: 12) {
+                HStack(spacing: 8) {
+                    brandHeader
+                    toolbarSuccessPill
+                }
+                .fixedSize(horizontal: true, vertical: false)
 
-            Spacer(minLength: 8)
+                Spacer(minLength: 8)
+
+                HStack(spacing: 8) {
+                    toolbarAccessibilityPill
+                    overflowMenu
+                }
+                .fixedSize(horizontal: true, vertical: false)
+            }
 
             filterCluster
-
-            Spacer(minLength: 8)
-
-            HStack(spacing: 8) {
-                toolbarAccessibilityPill
-                overflowMenu
-            }
         }
         .animation(.easeInOut(duration: 0.18), value: model.statusMessage)
         .animation(.easeInOut(duration: 0.18), value: model.requiresAccessibility)
@@ -450,6 +453,8 @@ struct HistoryView: View {
                 .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)
+        // Ventura-era borderless Menu expands to fill free HStack space without this.
+        .fixedSize(horizontal: true, vertical: false)
         .background { overflowBackground }
         .overlay {
             RoundedRectangle(cornerRadius: overflowCornerRadius, style: .continuous)

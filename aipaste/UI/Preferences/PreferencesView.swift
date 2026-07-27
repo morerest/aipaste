@@ -4,9 +4,11 @@ import SwiftUI
 
 struct PreferencesView: View {
     @ObservedObject var model: PreferencesViewModel
+    @Environment(\.colorScheme) private var systemColorScheme
     @State private var isShowingClearConfirmation = false
 
     private var s: SettingsStrings { model.strings }
+    private var themeStyle: WorkbenchThemeStyle { model.workbenchTheme.style }
 
     var body: some View {
         ScrollView {
@@ -20,9 +22,12 @@ struct PreferencesView: View {
             .padding(20)
         }
         .frame(width: 520, height: 600)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background { settingsWindowBackground }
+        .tint(themeStyle.accent)
+        .environment(\.colorScheme, themeStyle.interfaceColorScheme ?? systemColorScheme)
         .onAppear { model.refreshAccessibilityLabel() }
         .background(WindowTitleSetter(title: s.windowTitle))
+        .background(SettingsWindowChromeSync(theme: model.workbenchTheme))
         .confirmationDialog(
             s.clearConfirmTitle,
             isPresented: $isShowingClearConfirmation,
@@ -35,8 +40,21 @@ struct PreferencesView: View {
         } message: {
             Text(s.clearConfirmMessage)
         }
-        // Rebuild copy when language flips (confirmation + cards).
+        // Language only: force string refresh. Do NOT key on theme — rebuilding the
+        // whole tree on skin change (or re-open) has caused blank white content.
         .id(model.language)
+    }
+
+    @ViewBuilder
+    private var settingsWindowBackground: some View {
+        if themeStyle.usesSystemGlass {
+            Color(nsColor: .windowBackgroundColor)
+        } else {
+            ZStack {
+                themeStyle.opaquePanelColor
+                themeStyle.panelGradient.opacity(themeStyle.panelGradientOpacity * 0.55)
+            }
+        }
     }
 
     // MARK: - Sections
@@ -45,23 +63,20 @@ struct PreferencesView: View {
         SettingsCard(
             title: s.appearanceSection,
             systemImage: "paintpalette.fill",
-            tint: Color(red: 0.58, green: 0.38, blue: 0.82)
+            style: themeStyle
         ) {
             VStack(alignment: .leading, spacing: 12) {
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                    ForEach(WorkbenchTheme.allCases) { theme in
-                        WorkbenchThemePreview(
-                            theme: theme,
-                            isSelected: model.workbenchTheme == theme,
-                            label: s.workbenchThemeName(theme),
-                            selectedLabel: s.selectedThemeA11y,
-                            onSelect: { model.setWorkbenchTheme(theme) }
-                        )
-                    }
-                }
+                WorkbenchThemePicker(
+                    selected: model.workbenchTheme,
+                    name: { s.workbenchThemeName($0) },
+                    tagline: { s.workbenchThemeTagline($0) },
+                    currentBadge: s.currentThemeBadge,
+                    selectedA11y: s.selectedThemeA11y,
+                    onSelect: { model.setWorkbenchTheme($0) }
+                )
                 Text(s.appearanceFooter)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(settingsSecondaryText)
             }
         }
     }
@@ -70,7 +85,7 @@ struct PreferencesView: View {
         SettingsCard(
             title: s.historySection,
             systemImage: "clock.arrow.circlepath",
-            tint: Color(red: 0.20, green: 0.48, blue: 0.96)
+            style: themeStyle
         ) {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .firstTextBaseline) {
@@ -79,7 +94,7 @@ struct PreferencesView: View {
                             .font(.body)
                         Text(s.maxItemsFooter)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(settingsSecondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 12)
@@ -93,6 +108,7 @@ struct PreferencesView: View {
                 }
 
                 Divider()
+                    .overlay(themeStyle.dividerColor)
 
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -100,7 +116,7 @@ struct PreferencesView: View {
                             .font(.body)
                         Text(s.maxFavoritesFooter)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(settingsSecondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 12)
@@ -114,6 +130,7 @@ struct PreferencesView: View {
                 }
 
                 Divider()
+                    .overlay(themeStyle.dividerColor)
 
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
@@ -121,7 +138,7 @@ struct PreferencesView: View {
                             .font(.body)
                         Text(s.clearHistoryFooter)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(settingsSecondaryText)
                     }
                     Spacer(minLength: 12)
                     Button(s.clearHistoryButton, role: .destructive) {
@@ -137,6 +154,7 @@ struct PreferencesView: View {
         SettingsCard(
             title: s.privacySection,
             systemImage: "hand.raised.fill",
+            style: themeStyle,
             tint: Color(red: 0.95, green: 0.40, blue: 0.30)
         ) {
             VStack(alignment: .leading, spacing: 12) {
@@ -145,7 +163,7 @@ struct PreferencesView: View {
                         .font(.body)
                     Text(s.ignoredAppsFooter)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(settingsSecondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -153,7 +171,7 @@ struct PreferencesView: View {
                     if model.ignoredApps.isEmpty {
                         Text(s.ignoredAppsEmpty)
                             .font(.callout)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(settingsSecondaryText.opacity(0.75))
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.vertical, 14)
                             .padding(.horizontal, 12)
@@ -162,12 +180,14 @@ struct PreferencesView: View {
                             IgnoreAppRow(
                                 displayName: item.displayName,
                                 bundleId: item.bundleId,
-                                removeHelp: s.removeHelp
+                                removeHelp: s.removeHelp,
+                                secondaryText: settingsSecondaryText
                             ) {
                                 model.removeIgnore(item.bundleId)
                             }
                             if index < model.ignoredApps.count - 1 {
                                 Divider()
+                                    .overlay(themeStyle.dividerColor)
                                     .padding(.leading, 44)
                             }
                         }
@@ -175,11 +195,11 @@ struct PreferencesView: View {
                 }
                 .background(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color(nsColor: .controlBackgroundColor))
+                        .fill(settingsWellFill)
                 )
                 .overlay {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+                        .strokeBorder(themeStyle.borderColor, lineWidth: 1)
                 }
 
                 HStack(spacing: 8) {
@@ -227,7 +247,7 @@ struct PreferencesView: View {
                 if let message = model.ignoreStatusMessage {
                     Text(message)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(settingsSecondaryText)
                         .transition(.opacity)
                 }
             }
@@ -238,7 +258,7 @@ struct PreferencesView: View {
         SettingsCard(
             title: s.systemSection,
             systemImage: "gearshape.fill",
-            tint: Color(red: 0.45, green: 0.48, blue: 0.52)
+            style: themeStyle
         ) {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .center) {
@@ -247,7 +267,7 @@ struct PreferencesView: View {
                             .font(.body)
                         Text(s.languageFooter)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(settingsSecondaryText)
                     }
                     Spacer(minLength: 12)
                     Picker("", selection: languageBinding) {
@@ -261,10 +281,12 @@ struct PreferencesView: View {
                 }
 
                 Divider()
+                    .overlay(themeStyle.dividerColor)
 
                 hotkeyRow
 
                 Divider()
+                    .overlay(themeStyle.dividerColor)
 
                 Toggle(isOn: $model.launchAtLogin) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -272,13 +294,14 @@ struct PreferencesView: View {
                             .font(.body)
                         Text(s.launchAtLoginFooter)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(settingsSecondaryText)
                     }
                 }
                 .toggleStyle(.switch)
                 .onChange(of: model.launchAtLogin) { _ in model.applyLaunch() }
 
                 Divider()
+                    .overlay(themeStyle.dividerColor)
 
                 HStack(alignment: .top, spacing: 12) {
                     Circle()
@@ -291,7 +314,7 @@ struct PreferencesView: View {
                             .font(.body)
                         Text(model.accessibilityDetail)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(settingsSecondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
@@ -314,7 +337,7 @@ struct PreferencesView: View {
                         .font(.body)
                     Text(s.hotkeyFooter)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(settingsSecondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -325,6 +348,8 @@ struct PreferencesView: View {
                     isRecording: model.isRecordingHotKey,
                     recordPrompt: s.hotkeyRecordPrompt,
                     idleHint: s.hotkeyClickToRecord,
+                    accent: themeStyle.accent,
+                    primaryText: settingsPrimaryText,
                     onStartRecording: { model.beginHotKeyRecording() },
                     onCancelRecording: { model.cancelHotKeyRecording() },
                     onCapture: { model.applyHotKey($0) }
@@ -348,7 +373,7 @@ struct PreferencesView: View {
         SettingsCard(
             title: s.aboutSection,
             systemImage: "info.circle.fill",
-            tint: Color(red: 0.22, green: 0.72, blue: 0.86)
+            style: themeStyle
         ) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 12) {
@@ -360,33 +385,35 @@ struct PreferencesView: View {
 
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            BrandWordmark(fontSize: 16)
+                            BrandWordmark(fontSize: 16, themeStyle: themeStyle)
                             Text("Phase 1")
                                 .font(.caption.weight(.medium))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(settingsSecondaryText)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(Color.primary.opacity(0.06), in: Capsule())
+                                .background(settingsPrimaryText.opacity(0.06), in: Capsule())
                         }
                         Text(s.aboutTagline)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(settingsSecondaryText)
                     }
                 }
 
                 Divider()
+                    .overlay(themeStyle.dividerColor)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(s.dataDirectory)
                         .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(settingsSecondaryText)
                     Text("~/Library/Application Support/aipaste/")
                         .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.primary.opacity(0.85))
+                        .foregroundStyle(settingsPrimaryText.opacity(0.85))
                         .textSelection(.enabled)
                 }
 
                 Divider()
+                    .overlay(themeStyle.dividerColor)
 
                 // Same row layout as Clear History; force a solid red control —
                 // plain `role: .destructive` renders as muted gray on recent macOS.
@@ -396,7 +423,7 @@ struct PreferencesView: View {
                             .font(.body)
                         Text(s.quitFooter)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(settingsSecondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 12)
@@ -419,6 +446,20 @@ struct PreferencesView: View {
             get: { model.language },
             set: { model.setLanguage($0) }
         )
+    }
+
+    private var settingsPrimaryText: Color {
+        themeStyle.usesSystemGlass ? Color.primary : themeStyle.primaryText
+    }
+
+    private var settingsSecondaryText: Color {
+        themeStyle.usesSystemGlass ? Color.secondary : themeStyle.secondaryText
+    }
+
+    private var settingsWellFill: Color {
+        themeStyle.usesSystemGlass
+            ? Color(nsColor: .controlBackgroundColor)
+            : themeStyle.controlColor.opacity(0.85)
     }
 }
 
@@ -532,8 +573,21 @@ private struct AddIgnoredAppMenuButton: NSViewRepresentable {
 private struct SettingsCard<Content: View>: View {
     let title: String
     let systemImage: String
-    let tint: Color
+    let style: WorkbenchThemeStyle
+    var tint: Color? = nil
     @ViewBuilder let content: Content
+
+    private var iconTint: Color { tint ?? style.accent }
+
+    private var cardFill: Color {
+        style.usesSystemGlass
+            ? Color(nsColor: .controlBackgroundColor)
+            : style.cardColor
+    }
+
+    private var titleColor: Color {
+        style.usesSystemGlass ? Color.primary : style.primaryText
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -542,10 +596,11 @@ private struct SettingsCard<Content: View>: View {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 22, height: 22)
-                    .background(tint, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .background(iconTint, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
 
                 Text(title)
                     .font(.headline)
+                    .foregroundStyle(titleColor)
             }
 
             content
@@ -553,11 +608,11 @@ private struct SettingsCard<Content: View>: View {
                 .padding(14)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color(nsColor: .controlBackgroundColor))
+                        .fill(cardFill)
                 )
                 .overlay {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+                        .strokeBorder(style.borderColor, lineWidth: 1)
                 }
         }
     }
@@ -567,6 +622,7 @@ private struct IgnoreAppRow: View {
     let displayName: String
     let bundleId: String
     let removeHelp: String
+    var secondaryText: Color = .secondary
     let onRemove: () -> Void
 
     var body: some View {
@@ -584,7 +640,7 @@ private struct IgnoreAppRow: View {
                 if displayName != bundleId {
                     Text(bundleId)
                         .font(.system(.caption2, design: .monospaced))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(secondaryText)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
@@ -596,7 +652,7 @@ private struct IgnoreAppRow: View {
             Button(role: .destructive, action: onRemove) {
                 Image(systemName: "minus.circle.fill")
                     .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(secondaryText)
                     .font(.system(size: 15))
             }
             .buttonStyle(.plain)
@@ -618,10 +674,10 @@ private struct IgnoreAppRow: View {
         } else {
             Image(systemName: "app.fill")
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(secondaryText)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(
-                    Color.primary.opacity(0.06),
+                    secondaryText.opacity(0.12),
                     in: RoundedRectangle(cornerRadius: 6, style: .continuous)
                 )
         }
@@ -647,12 +703,48 @@ private struct WindowTitleSetter: NSViewRepresentable {
     }
 }
 
+/// Syncs the AppKit window chrome (title bar appearance + background) with the workbench skin.
+private struct SettingsWindowChromeSync: NSViewRepresentable {
+    let theme: WorkbenchTheme
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { Self.apply(theme, to: view.window) }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async { Self.apply(theme, to: nsView.window) }
+    }
+
+    private static func apply(_ theme: WorkbenchTheme, to window: NSWindow?) {
+        guard let window else { return }
+        let style = theme.style
+        if style.usesSystemGlass {
+            window.appearance = nil
+            window.backgroundColor = .windowBackgroundColor
+            return
+        }
+        switch style.interfaceColorScheme {
+        case .dark:
+            window.appearance = NSAppearance(named: .darkAqua)
+        case .light:
+            window.appearance = NSAppearance(named: .aqua)
+        default:
+            window.appearance = nil
+        }
+        window.backgroundColor = NSColor(style.opaquePanelColor)
+    }
+}
+
 /// Click to record a global shortcut; Esc cancels.
 private struct HotKeyRecorderControl: View {
     let display: String
     let isRecording: Bool
     let recordPrompt: String
     let idleHint: String
+    var accent: Color = .accentColor
+    var primaryText: Color = .primary
     let onStartRecording: () -> Void
     let onCancelRecording: () -> Void
     let onCapture: (HotKeyConfig) -> Void
@@ -670,17 +762,18 @@ private struct HotKeyRecorderControl: View {
             Text(isRecording ? recordPrompt : display)
                 .font(.system(.body, design: .rounded).weight(.semibold))
                 .monospacedDigit()
+                .foregroundStyle(primaryText)
                 .frame(minWidth: 108)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color.primary.opacity(isRecording ? 0.12 : 0.06))
+                        .fill(primaryText.opacity(isRecording ? 0.12 : 0.06))
                 )
                 .overlay {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .strokeBorder(
-                            isRecording ? Color.accentColor.opacity(0.7) : Color.primary.opacity(0.10),
+                            isRecording ? accent.opacity(0.7) : primaryText.opacity(0.10),
                             lineWidth: isRecording ? 1.5 : 1
                         )
                 }

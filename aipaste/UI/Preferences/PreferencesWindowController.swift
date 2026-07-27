@@ -6,6 +6,9 @@ final class PreferencesWindowController {
     private var window: NSWindow?
     /// Retained for the lifetime of the window so `@ObservedObject` stays alive.
     private var model: PreferencesViewModel?
+    /// Reuse the same hosting controller — replacing `contentViewController` on every
+    /// open is a common cause of blank/white SwiftUI content on the 2nd+ show.
+    private var hostingController: NSHostingController<PreferencesView>?
 
     func show(
         preferences: AppPreferences,
@@ -24,8 +27,17 @@ final class PreferencesWindowController {
             onQuit: onQuit
         )
         self.model = model
-        let view = PreferencesView(model: model)
-        let hosting = NSHostingController(rootView: view)
+
+        let root = PreferencesView(model: model)
+
+        if let hostingController {
+            hostingController.rootView = root
+        } else {
+            let hosting = NSHostingController(rootView: root)
+            hostingController = hosting
+        }
+
+        guard let hostingController else { return }
 
         if window == nil {
             let window = NSWindow(
@@ -39,18 +51,24 @@ final class PreferencesWindowController {
             window.isReleasedWhenClosed = false
             window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
             window.isMovableByWindowBackground = false
-            window.contentViewController = hosting
+            window.contentViewController = hostingController
             window.setContentSize(NSSize(width: 520, height: 600))
             window.center()
             self.window = window
         } else {
             window?.title = L10n.settings(preferences.appLanguage).windowTitle
-            window?.contentViewController = hosting
+            // Keep the same contentViewController instance; only the rootView changed.
+            if window?.contentViewController !== hostingController {
+                window?.contentViewController = hostingController
+            }
             window?.setContentSize(NSSize(width: 520, height: 600))
         }
 
         guard let window else { return }
+        present(window)
+    }
 
+    private func present(_ window: NSWindow) {
         // Accessory (LSUIElement) apps need an explicit activation to surface windows.
         if NSApp.activationPolicy() != .regular {
             NSApp.setActivationPolicy(.accessory)
@@ -58,5 +76,16 @@ final class PreferencesWindowController {
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
+
+        // Re-show after close can leave the hosting view with zero laid-out content
+        // until the next run-loop pass — force a layout so we never flash blank white.
+        window.layoutIfNeeded()
+        hostingController?.view.needsLayout = true
+        hostingController?.view.layoutSubtreeIfNeeded()
+        DispatchQueue.main.async { [weak self, weak window] in
+            window?.layoutIfNeeded()
+            self?.hostingController?.view.needsLayout = true
+            self?.hostingController?.view.layoutSubtreeIfNeeded()
+        }
     }
 }
