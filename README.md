@@ -18,6 +18,7 @@ Clipboard contents stay on this Mac. The current release has no accounts, cloud 
 - Compact skin picker: current-skin summary plus a horizontal swatch strip
 - Launch-ready toast under the menu-bar icon (menu-bar apps have no Dock bounce)
 - Search by content, source app, or favorite note
+- Content-type filtering for text, images, and mixed cards
 - Source-app and favorites filters
 - Content deduplication and automatic capacity pruning
 - Favorites that survive history cleanup, with optional notes of up to 10 characters
@@ -72,6 +73,9 @@ Click the menu-bar icon or press **⇧⌘V** to open the gallery on the screen c
 |--------|------------------|
 | Open or close the gallery | Menu-bar icon or **⇧⌘V** |
 | Select a card | Click, or **←** / **→** |
+| Return to the latest card | After scrolling away, click **Back to Latest** beside the app name |
+| Show favorites only | Click the **☆** button in the centered toolbar |
+| Filter history | Open **Filters** and choose a content type or source app |
 | Paste and close | Double-click or **Enter** |
 | Copy without pasting | **⌘C** or card context menu |
 | Add/remove favorite | **⌘P** or card context menu |
@@ -79,7 +83,7 @@ Click the menu-bar icon or press **⇧⌘V** to open the gallery on the screen c
 | Delete selected item | Forward Delete (`fn+Delete` on compact keyboards) |
 | Close the gallery | **Esc** or click outside |
 
-Use the gallery toolbar to search, filter by source app, show favorites, open Settings, clear history, or quit. Right-clicking the menu-bar icon also opens the app menu.
+Use the centered gallery toolbar to search, toggle Favorites Only in one click, or open one macOS-style Filters popover. The 360pt popover keeps content type and a two-column source-app list on one layer, so choosing an app never opens another menu. Its badge counts only those two popover dimensions (0–2); Clear Filters preserves both search text and the independent Favorites Only state. Right-clicking the menu-bar icon opens the app menu.
 
 ## Accessibility (auto-paste)
 
@@ -110,6 +114,8 @@ Skins change the workbench and Settings chrome. They do not alter stored clipboa
 
 ## Recent changes
 
+- **Contextual gallery navigation:** show a quiet **Back to Latest** glass capsule only after scrolling away from the newest card, while retaining the native macOS horizontal scroll indicator.
+- **Single-layer quick filters:** keep Favorites Only as a one-click toolbar star, and show content type plus a direct two-column source-app list in one native popover without nested menus.
 - **Workbench toolbar:** keep the search/filter cluster centered; stop the overflow `···` menu from stretching on older macOS (e.g. Ventura).
 - **Skin picker:** replace the full 2×3 preview grid with a current-skin summary and circular swatches.
 - **Settings theming:** apply the selected skin to the Settings window background, cards, and accents.

@@ -147,6 +147,62 @@ final class WorkbenchThemeTests: XCTestCase {
         XCTAssertEqual(workbenchOutlineWidth(2, increaseContrast: true), 2.5)
     }
 
+    func testBackToLatestQuietGlassCapsuleMatchesApprovedDesign() {
+        XCTAssertEqual(BackToLatestButtonTokens.symbolName, "arrow.left.to.line")
+        XCTAssertEqual(BackToLatestButtonTokens.height, 28)
+        XCTAssertEqual(BackToLatestButtonTokens.contentSpacing, 5)
+        XCTAssertEqual(BackToLatestButtonTokens.horizontalPadding, 10)
+        XCTAssertEqual(BackToLatestButtonTokens.iconFontSize, 11)
+        XCTAssertEqual(BackToLatestButtonTokens.labelFontSize, 12)
+        XCTAssertEqual(
+            BackToLatestButtonTokens.backgroundOpacity(isHovered: false, isPressed: false),
+            0.03
+        )
+        XCTAssertEqual(
+            BackToLatestButtonTokens.backgroundOpacity(isHovered: true, isPressed: false),
+            0.06
+        )
+        XCTAssertEqual(
+            BackToLatestButtonTokens.backgroundOpacity(isHovered: false, isPressed: true),
+            0.08
+        )
+        XCTAssertEqual(BackToLatestButtonTokens.borderOpacity(increaseContrast: false), 0.08)
+        XCTAssertEqual(BackToLatestButtonTokens.borderOpacity(increaseContrast: true), 0.20)
+        XCTAssertEqual(BackToLatestButtonTokens.pressedBrightness(isPressed: false), 0)
+        XCTAssertEqual(BackToLatestButtonTokens.pressedBrightness(isPressed: true), -0.02)
+    }
+
+    func testBackToLatestBorderFollowsUnfocusedSearchCluster() {
+        let glass = WorkbenchTheme.systemGlass.style
+        XCTAssertEqual(
+            BackToLatestButtonTokens.borderColor(themeStyle: glass, increaseContrast: false),
+            Color.primary.opacity(0.08)
+        )
+        XCTAssertEqual(
+            BackToLatestButtonTokens.borderColor(themeStyle: glass, increaseContrast: true),
+            glass.primaryText.opacity(0.20)
+        )
+
+        for theme in WorkbenchTheme.allCases where !theme.style.usesSystemGlass {
+            XCTAssertEqual(
+                BackToLatestButtonTokens.borderColor(
+                    themeStyle: theme.style,
+                    increaseContrast: false
+                ),
+                theme.style.borderColor,
+                theme.rawValue
+            )
+            XCTAssertEqual(
+                BackToLatestButtonTokens.borderColor(
+                    themeStyle: theme.style,
+                    increaseContrast: true
+                ),
+                theme.style.primaryText.opacity(0.20),
+                theme.rawValue
+            )
+        }
+    }
+
     func testSmallCardTextMeetsContrastOnNormalAndSelectedSurfaces() throws {
         for theme in WorkbenchTheme.allCases {
             let appearances: [NSAppearance.Name] = theme.isSystemAdaptive
@@ -268,6 +324,22 @@ final class WorkbenchThemeTests: XCTestCase {
                                     increasedText: increasedSelectedText,
                                     background: selectedFilter,
                                     context: "\(theme.rawValue) selected filter, focused \(searchFocused), \(surfaceName), \(appearanceName.rawValue)"
+                                )
+                            }
+
+                            for (hover, pressed) in [(false, false), (true, false), (false, true)] {
+                                let wash = primaryText.applyingOpacity(
+                                    BackToLatestButtonTokens.backgroundOpacity(
+                                        isHovered: hover,
+                                        isPressed: pressed
+                                    )
+                                )
+                                let latestButton = wash.composited(over: control)
+                                assertCompactTextContrast(
+                                    normalText: normalText,
+                                    increasedText: increasedText,
+                                    background: latestButton,
+                                    context: "\(theme.rawValue) back to latest hover \(hover) pressed \(pressed) on \(surfaceName), \(appearanceName.rawValue)"
                                 )
                             }
                         }

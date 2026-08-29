@@ -103,104 +103,65 @@ final class SnippetStore: @unchecked Sendable {
     }
 
     /// - Parameters:
-    ///   - query: optional text search (preview, body, or source app name).
+    ///   - query: optional text search (preview, body, source app name, or favorite note).
     ///   - sourceAppName: optional exact source app display name filter.
     ///   - favoritesOnly: when true, only pinned items (ordered by pin time).
+    ///   - kind: optional exact content-kind filter.
     func list(
         query: String?,
         sourceAppName: String? = nil,
         favoritesOnly: Bool = false,
+        kind: SnippetKind? = nil,
         limit: Int
     ) throws -> [Snippet] {
         try queue.sync {
             let trimmed = query?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             let app = sourceAppName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let hasQuery = !trimmed.isEmpty
-            let hasApp = !app.isEmpty
-            let pinClause = favoritesOnly ? "is_pinned = 1" : "1=1"
             // Favorites: most recently pinned first; history: most recently updated.
             let order = favoritesOnly
                 ? "ORDER BY IFNULL(pinned_at, updated_at) DESC"
                 : "ORDER BY updated_at DESC"
 
-            switch (hasQuery, hasApp) {
-            case (false, false):
-                return try database.withStatement(
+            var conditions = [favoritesOnly ? "is_pinned = 1" : "1=1"]
+            var bindings: [String] = []
+
+            if !app.isEmpty {
+                conditions.append("source_app_name = ?")
+                bindings.append(app)
+            }
+            if let kind {
+                conditions.append("kind = ?")
+                bindings.append(kind.rawValue)
+            }
+            if !trimmed.isEmpty {
+                conditions.append(
                     """
-                    SELECT id, created_at, updated_at, kind, content_hash, preview_text, text_body, media_path, byte_size,
-                           source_bundle_id, source_app_name, is_pinned, pinned_at, pin_note
-                    FROM snippets
-                    WHERE \(pinClause)
-                    \(order) LIMIT ?;
+                    (
+                      preview_text LIKE ? COLLATE NOCASE
+                      OR IFNULL(text_body, '') LIKE ? COLLATE NOCASE
+                      OR IFNULL(source_app_name, '') LIKE ? COLLATE NOCASE
+                      OR IFNULL(pin_note, '') LIKE ? COLLATE NOCASE
+                    )
                     """
-                ) { stmt in
-                    sqlite3_bind_int(stmt, 1, Int32(limit))
-                    return try readAll(stmt)
-                }
-            case (true, false):
+                )
                 let pattern = "%\(trimmed)%"
-                return try database.withStatement(
-                    """
-                    SELECT id, created_at, updated_at, kind, content_hash, preview_text, text_body, media_path, byte_size,
-                           source_bundle_id, source_app_name, is_pinned, pinned_at, pin_note
-                    FROM snippets
-                    WHERE \(pinClause)
-                      AND (
-                        preview_text LIKE ? COLLATE NOCASE
-                        OR IFNULL(text_body, '') LIKE ? COLLATE NOCASE
-                        OR IFNULL(source_app_name, '') LIKE ? COLLATE NOCASE
-                        OR IFNULL(pin_note, '') LIKE ? COLLATE NOCASE
-                      )
-                    \(order) LIMIT ?;
-                    """
-                ) { stmt in
-                    bindText(stmt, 1, pattern)
-                    bindText(stmt, 2, pattern)
-                    bindText(stmt, 3, pattern)
-                    bindText(stmt, 4, pattern)
-                    sqlite3_bind_int(stmt, 5, Int32(limit))
-                    return try readAll(stmt)
+                bindings.append(contentsOf: Array(repeating: pattern, count: 4))
+            }
+
+            let sql = """
+            SELECT id, created_at, updated_at, kind, content_hash, preview_text, text_body, media_path, byte_size,
+                   source_bundle_id, source_app_name, is_pinned, pinned_at, pin_note
+            FROM snippets
+            WHERE \(conditions.joined(separator: " AND "))
+            \(order) LIMIT ?;
+            """
+
+            return try database.withStatement(sql) { stmt in
+                for (offset, value) in bindings.enumerated() {
+                    bindText(stmt, Int32(offset + 1), value)
                 }
-            case (false, true):
-                return try database.withStatement(
-                    """
-                    SELECT id, created_at, updated_at, kind, content_hash, preview_text, text_body, media_path, byte_size,
-                           source_bundle_id, source_app_name, is_pinned, pinned_at, pin_note
-                    FROM snippets
-                    WHERE \(pinClause) AND source_app_name = ?
-                    \(order) LIMIT ?;
-                    """
-                ) { stmt in
-                    bindText(stmt, 1, app)
-                    sqlite3_bind_int(stmt, 2, Int32(limit))
-                    return try readAll(stmt)
-                }
-            case (true, true):
-                let pattern = "%\(trimmed)%"
-                return try database.withStatement(
-                    """
-                    SELECT id, created_at, updated_at, kind, content_hash, preview_text, text_body, media_path, byte_size,
-                           source_bundle_id, source_app_name, is_pinned, pinned_at, pin_note
-                    FROM snippets
-                    WHERE \(pinClause)
-                      AND source_app_name = ?
-                      AND (
-                        preview_text LIKE ? COLLATE NOCASE
-                        OR IFNULL(text_body, '') LIKE ? COLLATE NOCASE
-                        OR IFNULL(source_app_name, '') LIKE ? COLLATE NOCASE
-                        OR IFNULL(pin_note, '') LIKE ? COLLATE NOCASE
-                      )
-                    \(order) LIMIT ?;
-                    """
-                ) { stmt in
-                    bindText(stmt, 1, app)
-                    bindText(stmt, 2, pattern)
-                    bindText(stmt, 3, pattern)
-                    bindText(stmt, 4, pattern)
-                    bindText(stmt, 5, pattern)
-                    sqlite3_bind_int(stmt, 6, Int32(limit))
-                    return try readAll(stmt)
-                }
+                sqlite3_bind_int(stmt, Int32(bindings.count + 1), Int32(limit))
+                return try readAll(stmt)
             }
         }
     }

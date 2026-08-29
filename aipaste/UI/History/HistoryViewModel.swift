@@ -15,11 +15,15 @@ final class HistoryViewModel: ObservableObject {
     @Published var sourceAppFilter: String?
     /// When true, only pinned favorites are listed.
     @Published var favoritesOnly = false
+    /// Single-choice content type; `.all` maps to no storage-kind condition.
+    @Published var contentKindFilter: SnippetKindFilter = .all
     /// Distinct apps from history for the filter menu (most recent first).
     @Published private(set) var availableSourceApps: [SourceAppOption] = []
     @Published var selectedID: String?
     /// Bumped only for keyboard ←/→ so the gallery can scroll without doing so on mouse click.
     @Published private(set) var keyboardScrollToken: UInt = 0
+    /// Bumped for explicit “Back to Latest” requests so the gallery can use a leading anchor.
+    @Published private(set) var latestScrollToken: UInt = 0
     @Published var statusMessage: String?
     @Published var requiresAccessibility = false
     /// True only while the active toast is the accessibility / auto-paste hint.
@@ -51,6 +55,28 @@ final class HistoryViewModel: ObservableObject {
         !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || sourceAppFilter != nil
             || favoritesOnly
+            || contentKindFilter != .all
+    }
+
+    var activeFilterCount: Int {
+        (contentKindFilter == .all ? 0 : 1)
+            + (favoritesOnly ? 1 : 0)
+            + (sourceAppFilter == nil ? 0 : 1)
+    }
+
+    var hasStructuredFilters: Bool {
+        activeFilterCount > 0
+    }
+
+    /// Filters represented inside the Filters popover. Search and the
+    /// independent favorites button deliberately do not contribute.
+    var popoverFilterCount: Int {
+        (contentKindFilter == .all ? 0 : 1)
+            + (sourceAppFilter == nil ? 0 : 1)
+    }
+
+    var hasPopoverFilters: Bool {
+        popoverFilterCount > 0
     }
 
     init(
@@ -87,6 +113,7 @@ final class HistoryViewModel: ObservableObject {
                 query: query.isEmpty ? nil : query,
                 sourceAppName: sourceAppFilter,
                 favoritesOnly: favoritesOnly,
+                kind: contentKindFilter.snippetKind,
                 limit: AppConstants.listLimit
             )
             snippets = loaded
@@ -108,15 +135,30 @@ final class HistoryViewModel: ObservableObject {
         favoritesOnly = enabled
     }
 
+    func setContentKindFilter(_ filter: SnippetKindFilter) {
+        contentKindFilter = filter
+    }
+
     func toggleFavoritesFilter() {
         favoritesOnly.toggle()
     }
 
-    /// Clears search text, source-app filter, and favorites-only toggle.
+    /// Clears search text, source-app, favorites-only, and content-type filters.
     func clearAllFilters() {
         query = ""
+        clearStructuredFilters()
+    }
+
+    func clearStructuredFilters() {
         sourceAppFilter = nil
         favoritesOnly = false
+        contentKindFilter = .all
+    }
+
+    /// Clears only the conditions exposed by `HistoryFilterPopover`.
+    func clearPopoverFilters() {
+        sourceAppFilter = nil
+        contentKindFilter = .all
     }
 
     func selectPrevious() {
@@ -133,6 +175,12 @@ final class HistoryViewModel: ObservableObject {
         let id = snippets[index].id
         selectedID = id
         keyboardScrollToken &+= 1
+    }
+
+    func selectLatest() {
+        guard let id = snippets.first?.id else { return }
+        selectedID = id
+        latestScrollToken &+= 1
     }
 
     func pasteSelected() {

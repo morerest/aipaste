@@ -42,6 +42,36 @@ final class HistoryViewModelTests: XCTestCase {
         XCTAssertEqual(model.selectedID, model.snippets[1].id)
     }
 
+    func testSelectLatestSelectsFirstSnippetAndRequestsLeadingScroll() {
+        model.selectNext()
+        let tokenBefore = model.latestScrollToken
+
+        model.selectLatest()
+
+        XCTAssertEqual(model.selectedID, model.snippets.first?.id)
+        XCTAssertEqual(model.latestScrollToken, tokenBefore &+ 1)
+    }
+
+    func testSelectLatestRequestsScrollWhenFirstSnippetIsAlreadySelected() {
+        XCTAssertEqual(model.selectedID, model.snippets.first?.id)
+        let tokenBefore = model.latestScrollToken
+
+        model.selectLatest()
+
+        XCTAssertEqual(model.selectedID, model.snippets.first?.id)
+        XCTAssertEqual(model.latestScrollToken, tokenBefore &+ 1)
+    }
+
+    func testSelectLatestDoesNothingForEmptyHistory() {
+        model.clearHistory()
+        let tokenBefore = model.latestScrollToken
+
+        model.selectLatest()
+
+        XCTAssertNil(model.selectedID)
+        XCTAssertEqual(model.latestScrollToken, tokenBefore)
+    }
+
     func testDeleteSelectsNearestRemainingCard() {
         model.selectNext()
         model.deleteSelected()
@@ -109,6 +139,126 @@ final class HistoryViewModelTests: XCTestCase {
         model.reload()
         XCTAssertNil(model.sourceAppFilter)
         XCTAssertGreaterThanOrEqual(model.snippets.count, 2)
+    }
+
+    func testContentKindFilterDefaultsToAllAndLoadsMatchingKind() throws {
+        let png = Self.tinyPNGData()
+        let image = Snippet.makeImage(
+            hash: "filter-image",
+            byteSize: png.count,
+            mediaPath: "filter-image.png",
+            previewText: "Image"
+        )
+        try store.upsert(image, imageData: png)
+        model.reload()
+
+        XCTAssertEqual(model.contentKindFilter, .all)
+
+        model.setContentKindFilter(.image)
+        model.reload()
+
+        XCTAssertFalse(model.snippets.isEmpty)
+        XCTAssertTrue(model.snippets.allSatisfy { $0.kind == .image })
+        XCTAssertTrue(model.hasActiveFilters)
+    }
+
+    func testClearAllFiltersAlsoResetsContentKind() {
+        model.query = "new"
+        model.setSourceAppFilter("Notes")
+        model.setFavoritesOnly(true)
+        model.setContentKindFilter(.mixed)
+
+        model.clearAllFilters()
+
+        XCTAssertEqual(model.query, "")
+        XCTAssertNil(model.sourceAppFilter)
+        XCTAssertFalse(model.favoritesOnly)
+        XCTAssertEqual(model.contentKindFilter, .all)
+        XCTAssertFalse(model.hasActiveFilters)
+    }
+
+    func testActiveFilterCountTracksStructuredFiltersButNotSearch() {
+        XCTAssertEqual(model.activeFilterCount, 0)
+
+        model.query = "new"
+        XCTAssertEqual(model.activeFilterCount, 0)
+
+        model.setContentKindFilter(.image)
+        XCTAssertEqual(model.activeFilterCount, 1)
+
+        model.setFavoritesOnly(true)
+        XCTAssertEqual(model.activeFilterCount, 2)
+
+        model.setSourceAppFilter("Notes")
+        XCTAssertEqual(model.activeFilterCount, 3)
+        XCTAssertTrue(model.hasStructuredFilters)
+    }
+
+    func testPopoverFilterCountTracksOnlyContentTypeAndSourceApp() {
+        XCTAssertEqual(model.popoverFilterCount, 0)
+
+        model.query = "new"
+        model.setFavoritesOnly(true)
+        XCTAssertEqual(model.popoverFilterCount, 0)
+
+        model.setContentKindFilter(.image)
+        XCTAssertEqual(model.popoverFilterCount, 1)
+
+        model.setSourceAppFilter("Notes")
+        XCTAssertEqual(model.popoverFilterCount, 2)
+        XCTAssertTrue(model.hasPopoverFilters)
+    }
+
+    func testClearPopoverFiltersPreservesSearchAndFavorites() {
+        model.query = "new"
+        model.setFavoritesOnly(true)
+        model.setContentKindFilter(.mixed)
+        model.setSourceAppFilter("Notes")
+
+        model.clearPopoverFilters()
+
+        XCTAssertEqual(model.query, "new")
+        XCTAssertTrue(model.favoritesOnly)
+        XCTAssertEqual(model.contentKindFilter, .all)
+        XCTAssertNil(model.sourceAppFilter)
+        XCTAssertEqual(model.popoverFilterCount, 0)
+        XCTAssertFalse(model.hasPopoverFilters)
+        XCTAssertTrue(model.hasActiveFilters)
+    }
+
+    func testClearStructuredFiltersPreservesSearch() {
+        model.query = "new"
+        model.setContentKindFilter(.mixed)
+        model.setFavoritesOnly(true)
+        model.setSourceAppFilter("Notes")
+
+        model.clearStructuredFilters()
+
+        XCTAssertEqual(model.query, "new")
+        XCTAssertEqual(model.contentKindFilter, .all)
+        XCTAssertFalse(model.favoritesOnly)
+        XCTAssertNil(model.sourceAppFilter)
+        XCTAssertEqual(model.activeFilterCount, 0)
+        XCTAssertFalse(model.hasStructuredFilters)
+        XCTAssertTrue(model.hasActiveFilters)
+    }
+
+    func testGalleryScrollMetricsShowsBackToLatestOnlyPastThreshold() {
+        XCTAssertFalse(
+            GalleryScrollMetrics.shouldShowBackToLatest(leadingX: 0, hasResults: true)
+        )
+        XCTAssertFalse(
+            GalleryScrollMetrics.shouldShowBackToLatest(leadingX: -70, hasResults: true)
+        )
+        XCTAssertTrue(
+            GalleryScrollMetrics.shouldShowBackToLatest(leadingX: -70.1, hasResults: true)
+        )
+    }
+
+    func testGalleryScrollMetricsHidesBackToLatestWithoutResults() {
+        XCTAssertFalse(
+            GalleryScrollMetrics.shouldShowBackToLatest(leadingX: -200, hasResults: false)
+        )
     }
 
     func testClearAllFiltersResetsQueryAppAndFavorites() throws {

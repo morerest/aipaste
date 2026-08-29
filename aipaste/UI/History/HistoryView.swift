@@ -4,6 +4,7 @@ import SwiftUI
 struct HistoryView: View {
     @ObservedObject var model: HistoryViewModel
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var accessibilityContrast
     @Environment(\.colorScheme) private var systemColorScheme
 
@@ -14,6 +15,9 @@ struct HistoryView: View {
     let onQuit: () -> Void
 
     @FocusState private var searchFocused: Bool
+    @State private var isFilterPopoverPresented = false
+    @State private var isAwayFromLatest = false
+    @State private var latestButtonHovered = false
 
     init(
         model: HistoryViewModel,
@@ -88,7 +92,14 @@ struct HistoryView: View {
         .onAppear {
             searchFocused = true
         }
-        .task(id: "\(model.query)|\(model.sourceAppFilter ?? "")|\(model.favoritesOnly)") {
+        .onChange(of: model.snippets.isEmpty) { isEmpty in
+            if isEmpty {
+                isAwayFromLatest = false
+            }
+        }
+        .task(
+            id: "\(model.query)|\(model.sourceAppFilter ?? "")|\(model.favoritesOnly)|\(model.contentKindFilter.rawValue)"
+        ) {
             await Task.yield()
             guard !Task.isCancelled else { return }
             model.reload()
@@ -104,6 +115,7 @@ struct HistoryView: View {
             HStack(spacing: 12) {
                 HStack(spacing: 8) {
                     brandHeader
+                    contextualLatestButton
                     toolbarSuccessPill
                 }
                 .fixedSize(horizontal: true, vertical: false)
@@ -124,6 +136,8 @@ struct HistoryView: View {
         .animation(.easeInOut(duration: 0.14), value: model.hasActiveFilters)
         .animation(.easeInOut(duration: 0.14), value: model.favoritesOnly)
         .animation(.easeInOut(duration: 0.14), value: model.sourceAppFilter)
+        .animation(.easeInOut(duration: 0.14), value: model.contentKindFilter)
+        .animation(.easeOut(duration: 0.16), value: isAwayFromLatest)
     }
 
     /// App icon + wordmark; count lives in the filter cluster.
@@ -144,20 +158,77 @@ struct HistoryView: View {
         .help(AppConstants.displayName)
     }
 
+    @ViewBuilder
+    private var contextualLatestButton: some View {
+        if isAwayFromLatest && !model.snippets.isEmpty {
+            Button {
+                model.selectLatest()
+            } label: {
+                HStack(spacing: BackToLatestButtonTokens.contentSpacing) {
+                    latestButtonIcon
+
+                    Text(s.backToLatestHelp)
+                        .font(.system(
+                            size: BackToLatestButtonTokens.labelFontSize,
+                            weight: .medium
+                        ))
+                        .foregroundStyle(
+                            themeStyle.compactChromeText(
+                                increaseContrast: increaseContrast || latestButtonHovered
+                            )
+                        )
+                }
+            }
+            .buttonStyle(
+                BackToLatestButtonStyle(
+                    themeStyle: themeStyle,
+                    isHovered: latestButtonHovered,
+                    increaseContrast: increaseContrast,
+                    reduceTransparency: reduceTransparency
+                )
+            )
+            .onHover { latestButtonHovered = $0 }
+            .help(s.backToLatestHelp)
+            .accessibilityLabel(s.backToLatestHelp)
+            .transition(latestButtonTransition)
+        }
+    }
+
+    private var latestButtonTransition: AnyTransition {
+        reduceMotion
+            ? .opacity
+            : .opacity.combined(with: .offset(x: -4))
+    }
+
+    @ViewBuilder
+    private var latestButtonIcon: some View {
+        if themeStyle.usesSystemGlass {
+            Image(systemName: BackToLatestButtonTokens.symbolName)
+                .font(.system(size: BackToLatestButtonTokens.iconFontSize, weight: .semibold))
+                .foregroundStyle(BrandPalette.aiGradient)
+                .accessibilityHidden(true)
+        } else {
+            Image(systemName: BackToLatestButtonTokens.symbolName)
+                .font(.system(size: BackToLatestButtonTokens.iconFontSize, weight: .semibold))
+                .foregroundStyle(themeStyle.accent)
+                .accessibilityHidden(true)
+        }
+    }
+
     // MARK: - Unified filter cluster
 
-    /// Single chrome: search input + count + favorites star + app filter (+ clear).
+    /// Search stays dominant; lower-frequency structured filters live in one popover.
     private var filterCluster: some View {
         HStack(spacing: 0) {
             clusterInput
 
             clusterDivider
 
-            favoritesClusterButton
+            favoritesFilterButton
 
             clusterDivider
 
-            appFilterMenu
+            filterPopoverButton
         }
         .frame(minWidth: 360, idealWidth: 500, maxWidth: 560)
         .frame(height: clusterHeight)
@@ -176,6 +247,75 @@ struct HistoryView: View {
         .animation(.easeInOut(duration: 0.16), value: searchFocused)
         .animation(.easeInOut(duration: 0.14), value: model.query.isEmpty)
         .help(s.filterHelp)
+    }
+
+    private var favoritesFilterButton: some View {
+        Button {
+            model.toggleFavoritesFilter()
+        } label: {
+            Image(systemName: model.favoritesOnly ? "star.fill" : "star")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(
+                    model.favoritesOnly
+                        ? selectionAccent
+                        : themeStyle.compactChromeText(increaseContrast: increaseContrast)
+                )
+                .frame(minWidth: 38, minHeight: clusterHeight)
+                .background(model.favoritesOnly ? selectionAccent.opacity(0.08) : .clear)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .fixedSize(horizontal: true, vertical: false)
+        .help(model.favoritesOnly ? s.favoritesFilterOnHelp : s.favoritesFilterOffHelp)
+        .accessibilityLabel(s.favoritesOnly)
+        .accessibilityValue(
+            model.favoritesOnly ? s.favoritesFilterOnA11y : s.favoritesFilterOffA11y
+        )
+        .accessibilityAddTraits(model.favoritesOnly ? .isSelected : [])
+    }
+
+    private var filterPopoverButton: some View {
+        Button {
+            isFilterPopoverPresented.toggle()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "line.3.horizontal.decrease")
+                    .font(.system(size: 11, weight: .semibold))
+
+                Text(s.filtersTitle)
+                    .font(.system(size: 12, weight: .medium))
+
+                FilterCountBadge(
+                    count: model.popoverFilterCount,
+                    accent: selectionAccent
+                )
+
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .semibold))
+                    .opacity(0.55)
+            }
+            .foregroundStyle(
+                model.hasPopoverFilters
+                    ? themeStyle.selectedCompactChromeText(increaseContrast: increaseContrast)
+                    : themeStyle.compactChromeText(increaseContrast: increaseContrast)
+            )
+            .padding(.horizontal, 10)
+            .frame(height: clusterHeight)
+            .contentShape(Rectangle())
+            .background(model.hasPopoverFilters ? selectionAccent.opacity(0.08) : .clear)
+        }
+        .buttonStyle(.plain)
+        .fixedSize(horizontal: true, vertical: false)
+        .help(s.filterHelp)
+        .accessibilityLabel(s.filtersTitle)
+        .accessibilityValue(
+            model.popoverFilterCount > 0
+                ? "\(model.popoverFilterCount) \(s.activeFiltersA11y)"
+                : ""
+        )
+        .popover(isPresented: $isFilterPopoverPresented, arrowEdge: .bottom) {
+            HistoryFilterPopover(model: model)
+        }
     }
 
     private var clusterInput: some View {
@@ -220,90 +360,6 @@ struct HistoryView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .onTapGesture { searchFocused = true }
-    }
-
-    /// Favorites toggle — icon only (no "Favorites" / "All" label).
-    private var favoritesClusterButton: some View {
-        Button {
-            model.toggleFavoritesFilter()
-        } label: {
-            Image(systemName: model.favoritesOnly ? "star.fill" : "star")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(model.favoritesOnly ? Color.orange : themeStyle.secondaryText)
-                .frame(width: 36, height: clusterHeight)
-                .contentShape(Rectangle())
-                .background(
-                    model.favoritesOnly
-                        ? Color.orange.opacity(0.14)
-                        : Color.clear
-                )
-        }
-        .buttonStyle(.plain)
-        .help(model.favoritesOnly ? s.favoritesFilterOnHelp : s.favoritesFilterOffHelp)
-        .accessibilityLabel(model.favoritesOnly ? s.favoritesFilterOnA11y : s.favoritesFilterOffA11y)
-    }
-
-    private var appFilterMenu: some View {
-        Menu {
-            Button {
-                model.setSourceAppFilter(nil)
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "square.grid.2x2")
-                        .font(.system(size: 10, weight: .medium))
-                        .frame(width: 14, height: 14)
-                    Text(s.allApps)
-                }
-            }
-
-            if !model.availableSourceApps.isEmpty {
-                Divider()
-                ForEach(model.availableSourceApps) { app in
-                    Button {
-                        model.setSourceAppFilter(app.name)
-                    } label: {
-                        HStack(spacing: 6) {
-                            sourceAppMenuIcon(bundleId: app.bundleId, pointSize: 14)
-                            Text(app.name)
-                        }
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 5) {
-                if let selected = selectedSourceAppOption {
-                    sourceAppMenuIcon(bundleId: selected.bundleId, pointSize: 12)
-                    Text(shortAppName(selected.name))
-                        .lineLimit(1)
-                } else {
-                    Image(systemName: "app.badge")
-                        .font(.system(size: 10, weight: .medium))
-                    Text(s.apps)
-                        .lineLimit(1)
-                }
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 8, weight: .semibold))
-                    .opacity(0.55)
-            }
-            .font(.system(size: 11, weight: model.sourceAppFilter == nil ? .medium : .semibold))
-            .foregroundStyle(
-                model.sourceAppFilter == nil
-                    ? themeStyle.compactChromeText(increaseContrast: increaseContrast)
-                    : themeStyle.selectedCompactChromeText(increaseContrast: increaseContrast)
-            )
-            .padding(.horizontal, 10)
-            .frame(height: clusterHeight)
-            .contentShape(Rectangle())
-            .background(
-                model.sourceAppFilter == nil
-                    ? Color.clear
-                    : selectionAccent.opacity(0.08)
-            )
-        }
-        .font(.system(size: 12))
-        .menuStyle(.borderlessButton)
-        .fixedSize(horizontal: true, vertical: false)
-        .help(s.filterByAppHelp)
     }
 
     private var clusterDivider: some View {
@@ -408,35 +464,6 @@ struct HistoryView: View {
         }
     }
 
-    private var selectedSourceAppOption: SourceAppOption? {
-        guard let name = model.sourceAppFilter else { return nil }
-        return model.availableSourceApps.first { $0.name == name }
-    }
-
-    /// Compact label for the cluster tail (e.g. "Google Chrome" → "Chrome").
-    private func shortAppName(_ name: String) -> String {
-        if name.hasPrefix("Google ") {
-            return String(name.dropFirst("Google ".count))
-        }
-        if name.count > 14 {
-            return String(name.prefix(12)) + "…"
-        }
-        return name
-    }
-
-    /// Menu icons need an explicit `NSImage.size` — SwiftUI frames are ignored by NSMenu.
-    @ViewBuilder
-    private func sourceAppMenuIcon(bundleId: String?, pointSize: CGFloat) -> some View {
-        if let icon = SourceAppIconCache.menuIcon(forBundleId: bundleId, pointSize: pointSize) {
-            Image(nsImage: icon)
-        } else {
-            Image(systemName: "app.fill")
-                .font(.system(size: pointSize * 0.72))
-                .foregroundStyle(themeStyle.secondaryText)
-                .frame(width: pointSize, height: pointSize)
-        }
-    }
-
     // MARK: - Overflow
 
     private var overflowMenu: some View {
@@ -496,7 +523,7 @@ struct HistoryView: View {
 
     private var gallery: some View {
         ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal, showsIndicators: true) {
                 LazyHStack(spacing: 14) {
                     ForEach(model.snippets) { snippet in
                         HistoryCardView(
@@ -543,6 +570,16 @@ struct HistoryView: View {
                 }
                 .padding(.horizontal, 4)
                 .padding(.vertical, 4)
+                .background {
+                    GalleryScrollOffsetObserver { horizontalOffset in
+                        let shouldShow = GalleryScrollMetrics.shouldShowBackToLatest(
+                            leadingX: -max(0, horizontalOffset),
+                            hasResults: !model.snippets.isEmpty
+                        )
+                        guard shouldShow != isAwayFromLatest else { return }
+                        isAwayFromLatest = shouldShow
+                    }
+                }
             }
             // Only keyboard ←/→ should auto-scroll. Mouse click selects in place
             // (centering every click felt laggy even when the card was already visible).
@@ -550,6 +587,12 @@ struct HistoryView: View {
                 guard let id = model.selectedID else { return }
                 withAnimation(.easeOut(duration: 0.1)) {
                     proxy.scrollTo(id, anchor: .center)
+                }
+            }
+            .onChange(of: model.latestScrollToken) { _ in
+                guard let id = model.selectedID else { return }
+                withAnimation(.easeOut(duration: 0.1)) {
+                    proxy.scrollTo(id, anchor: .leading)
                 }
             }
         }
@@ -569,14 +612,20 @@ struct HistoryView: View {
     }
 
     private var emptyStateTitle: String {
-        if model.favoritesOnly && model.query.isEmpty && model.sourceAppFilter == nil {
+        if model.favoritesOnly
+            && model.query.isEmpty
+            && model.sourceAppFilter == nil
+            && model.contentKindFilter == .all {
             return s.emptyNoFavoritesTitle
         }
         return model.hasActiveFilters ? s.emptyNoResultsTitle : s.emptyNoHistoryTitle
     }
 
     private var emptyStateBody: String {
-        if model.favoritesOnly && model.query.isEmpty && model.sourceAppFilter == nil {
+        if model.favoritesOnly
+            && model.query.isEmpty
+            && model.sourceAppFilter == nil
+            && model.contentKindFilter == .all {
             return s.emptyNoFavoritesBody
         }
         return model.hasActiveFilters ? s.emptyNoResultsBody : s.emptyNoHistoryBody
@@ -689,5 +738,23 @@ struct HistoryView: View {
 
     private var accessibilityActionColor: Color {
         themeStyle.usesSystemGlass ? Color.accentColor : themeStyle.primaryText
+    }
+}
+
+struct FilterCountBadge: View {
+    let count: Int
+    let accent: Color
+
+    private var isVisible: Bool { count > 0 }
+
+    var body: some View {
+        Text("\(max(count, 0))")
+            .font(.system(size: 10, weight: .bold, design: .rounded))
+            .monospacedDigit()
+            .foregroundStyle(Color.white)
+            .frame(width: 16, height: 16)
+            .background(Circle().fill(accent))
+            .opacity(isVisible ? 1 : 0)
+            .accessibilityHidden(true)
     }
 }

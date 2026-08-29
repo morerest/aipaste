@@ -72,6 +72,79 @@ final class SnippetStoreTests: XCTestCase {
         XCTAssertEqual(list.map(\.textBody), ["alpha from wechat"])
     }
 
+    func testFilterByEachSnippetKind() throws {
+        let png = Self.onePixelPNG()
+        try store.upsert(Snippet.makeText(body: "text only", hash: "kind-text"))
+        try store.upsert(
+            Snippet.makeImage(
+                hash: "kind-image",
+                byteSize: png.count,
+                mediaPath: "kind-image.png",
+                previewText: "Image"
+            ),
+            imageData: png
+        )
+        try store.upsert(
+            Snippet.makeMixed(
+                body: "mixed caption",
+                imageHash: "kind-mixed",
+                byteSize: png.count,
+                mediaPath: "kind-mixed.png",
+                imagePreview: "Image"
+            ),
+            imageData: png
+        )
+
+        XCTAssertEqual(try store.list(query: nil, kind: .text, limit: 10).map(\.kind), [.text])
+        XCTAssertEqual(try store.list(query: nil, kind: .image, limit: 10).map(\.kind), [.image])
+        XCTAssertEqual(try store.list(query: nil, kind: .mixed, limit: 10).map(\.kind), [.mixed])
+        XCTAssertEqual(
+            Set(try store.list(query: nil, kind: nil, limit: 10).map(\.kind)),
+            [.text, .image, .mixed]
+        )
+    }
+
+    func testKindCombinesWithSearchAppAndFavorites() throws {
+        let png = Self.onePixelPNG()
+        let matching = Snippet.makeMixed(
+            body: "project alpha",
+            imageHash: "combo-matching",
+            byteSize: png.count,
+            mediaPath: "combo-matching.png",
+            imagePreview: "Image",
+            sourceAppName: "Notes"
+        )
+        let wrongKind = Snippet.makeText(
+            body: "project alpha",
+            hash: "combo-text",
+            sourceAppName: "Notes"
+        )
+        let wrongApp = Snippet.makeMixed(
+            body: "project alpha",
+            imageHash: "combo-app",
+            byteSize: png.count,
+            mediaPath: "combo-app.png",
+            imagePreview: "Image",
+            sourceAppName: "Preview"
+        )
+        try store.upsert(matching, imageData: png)
+        try store.upsert(wrongKind)
+        try store.upsert(wrongApp, imageData: png)
+        _ = try store.setPinned(id: matching.id, pinned: true)
+        _ = try store.setPinned(id: wrongKind.id, pinned: true)
+        _ = try store.setPinned(id: wrongApp.id, pinned: true)
+
+        let result = try store.list(
+            query: "alpha",
+            sourceAppName: "Notes",
+            favoritesOnly: true,
+            kind: .mixed,
+            limit: 10
+        )
+
+        XCTAssertEqual(result.map(\.id), [matching.id])
+    }
+
     func testDistinctSourceAppsOrderedByRecent() throws {
         try store.upsert(
             Snippet.makeText(body: "old", hash: "1", updatedAt: Date(timeIntervalSince1970: 1), sourceAppName: "Notes")

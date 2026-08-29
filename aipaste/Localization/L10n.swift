@@ -237,9 +237,25 @@ struct WorkbenchStrings: L10nBundle {
     var filterHelp: String {
         t(en: "Filter clipboard history", zh: "筛选剪贴板历史")
     }
+    var filtersTitle: String { t(en: "Filters", zh: "筛选") }
+    var activeFiltersA11y: String {
+        t(en: "Active filters", zh: "已启用筛选")
+    }
     var clearSearchHelp: String {
         t(en: "Clear search", zh: "清除搜索")
     }
+    var backToLatestHelp: String {
+        t(en: "Back to Latest", zh: "回到最新")
+    }
+    var contentTypeHelp: String { t(en: "Content Type", zh: "内容类型") }
+    var contentTypeAll: String { t(en: "All", zh: "全部") }
+    var contentTypeText: String { t(en: "Text", zh: "文字") }
+    var contentTypeImages: String { t(en: "Images", zh: "图片") }
+    var contentTypeMixed: String { t(en: "Mixed", zh: "图文") }
+    var favoritesSectionTitle: String { t(en: "Favorites", zh: "收藏") }
+    var favoritesOnly: String { t(en: "Favorites Only", zh: "仅看收藏") }
+    var sourceAppTitle: String { t(en: "Source App", zh: "来源应用") }
+    var clearFilters: String { t(en: "Clear Filters", zh: "清除筛选") }
     var matchingItemsHelp: String {
         t(en: "Matching items", zh: "匹配条数")
     }
@@ -284,8 +300,8 @@ struct WorkbenchStrings: L10nBundle {
           zh: "右键卡片或按 ⌘P 添加收藏。")
     }
     var emptyNoResultsBody: String {
-        t(en: "Try a different search, app, or favorites filter.",
-          zh: "试试其他搜索词、应用或收藏筛选。")
+        t(en: "Try a different search, content type, app, or favorites filter.",
+          zh: "试试其他搜索词、内容类型、应用或收藏筛选。")
     }
     var emptyNoHistoryBody: String {
         t(en: "Copied text and images will appear here.",

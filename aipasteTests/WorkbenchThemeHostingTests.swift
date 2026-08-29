@@ -5,6 +5,84 @@ import XCTest
 
 @MainActor
 final class WorkbenchThemeHostingTests: XCTestCase {
+    func testBackToLatestQuietGlassCapsuleRendersAtApprovedHeight() {
+        let label = HStack(spacing: BackToLatestButtonTokens.contentSpacing) {
+            Image(systemName: BackToLatestButtonTokens.symbolName)
+                .font(.system(size: BackToLatestButtonTokens.iconFontSize, weight: .semibold))
+            Text("Back to Latest")
+                .font(.system(size: BackToLatestButtonTokens.labelFontSize, weight: .medium))
+        }
+        let button = Button(action: {}, label: { label })
+            .buttonStyle(
+                BackToLatestButtonStyle(
+                    themeStyle: WorkbenchTheme.systemGlass.style,
+                    isHovered: false,
+                    increaseContrast: false,
+                    reduceTransparency: true
+                )
+            )
+        let host = NSHostingController(rootView: button)
+        host.loadView()
+        host.view.layoutSubtreeIfNeeded()
+        XCTAssertEqual(host.view.fittingSize.height, 28, accuracy: 0.5)
+    }
+
+    func testFilterCountBadgeKeepsItsWidthWhenCountAppears() {
+        let hiddenBadge = NSHostingController(
+            rootView: FilterCountBadge(count: 0, accent: .blue)
+        )
+        hiddenBadge.loadView()
+        hiddenBadge.view.layoutSubtreeIfNeeded()
+
+        let visibleBadge = NSHostingController(
+            rootView: FilterCountBadge(count: 1, accent: .blue)
+        )
+        visibleBadge.loadView()
+        visibleBadge.view.layoutSubtreeIfNeeded()
+
+        XCTAssertEqual(hiddenBadge.view.fittingSize.width, 16, accuracy: 0.5)
+        XCTAssertEqual(visibleBadge.view.fittingSize.width, 16, accuracy: 0.5)
+        XCTAssertEqual(
+            hiddenBadge.view.fittingSize.width,
+            visibleBadge.view.fittingSize.width,
+            accuracy: 0.5
+        )
+    }
+
+    func testNativeScrollOffsetObserverReportsHorizontalBoundsChanges() throws {
+        var reportedOffsets: [CGFloat] = []
+        let view = ScrollView(.horizontal) {
+            HStack {
+                Color.clear.frame(width: 2_000, height: 100)
+            }
+            .background {
+                GalleryScrollOffsetObserver {
+                    reportedOffsets.append($0)
+                }
+            }
+        }
+
+        let hosting = NSHostingController(rootView: view)
+        hosting.loadView()
+        hosting.view.frame = NSRect(x: 0, y: 0, width: 300, height: 100)
+        let window = NSWindow(
+            contentRect: hosting.view.frame,
+            styleMask: .borderless,
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = hosting.view
+        hosting.view.layoutSubtreeIfNeeded()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+
+        let scrollView = try XCTUnwrap(firstScrollView(in: hosting.view))
+        scrollView.contentView.scroll(to: NSPoint(x: 150, y: 0))
+        scrollView.reflectScrolledClipView(scrollView.contentView)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertGreaterThan(reportedOffsets.last ?? 0, 70)
+    }
+
     func testEveryThemeCanHostWorkbenchChromeAndHistory() throws {
         let tempRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("aipaste-theme-host-\(UUID().uuidString)", isDirectory: true)
@@ -112,6 +190,14 @@ final class WorkbenchThemeHostingTests: XCTestCase {
             XCTAssertGreaterThan(cardHost.view.fittingSize.width, 0, theme.rawValue)
             XCTAssertGreaterThan(cardHost.view.fittingSize.height, 0, theme.rawValue)
 
+            let filterPopoverHost = NSHostingController(
+                rootView: HistoryFilterPopover(model: model)
+            )
+            filterPopoverHost.loadView()
+            filterPopoverHost.view.layoutSubtreeIfNeeded()
+            XCTAssertEqual(filterPopoverHost.view.fittingSize.width, 360, accuracy: 1, theme.rawValue)
+            XCTAssertGreaterThan(filterPopoverHost.view.fittingSize.height, 0, theme.rawValue)
+
             let view = HistoryView(
                 model: model,
                 onClose: {},
@@ -128,5 +214,12 @@ final class WorkbenchThemeHostingTests: XCTestCase {
             XCTAssertGreaterThan(hosting.view.fittingSize.height, 0, theme.rawValue)
             XCTAssertEqual(model.selectedID, selectedID, theme.rawValue)
         }
+    }
+
+    private func firstScrollView(in view: NSView) -> NSScrollView? {
+        if let scrollView = view as? NSScrollView {
+            return scrollView
+        }
+        return view.subviews.lazy.compactMap(firstScrollView(in:)).first
     }
 }

@@ -7,6 +7,25 @@ enum SnippetKind: String, Codable, Sendable {
     case mixed
 }
 
+/// Single-choice content-kind filter used by the history UI.
+enum SnippetKindFilter: String, CaseIterable, Identifiable, Sendable {
+    case all
+    case text
+    case image
+    case mixed
+
+    var id: String { rawValue }
+
+    var snippetKind: SnippetKind? {
+        switch self {
+        case .all: return nil
+        case .text: return .text
+        case .image: return .image
+        case .mixed: return .mixed
+        }
+    }
+}
+
 /// Distinct source app for the history filter menu.
 struct SourceAppOption: Identifiable, Hashable, Sendable {
     var id: String { name }
