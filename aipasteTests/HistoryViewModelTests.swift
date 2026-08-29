@@ -66,6 +66,73 @@ final class HistoryViewModelTests: XCTestCase {
         XCTAssertEqual(model.latestScrollToken, tokenBefore &+ 1)
     }
 
+    func testFiltersAutoResetAfterIdleInterval() async throws {
+        let expiringModel = HistoryViewModel(
+            store: store,
+            pasteEngine: PasteEngine(store: store),
+            filterAutoResetInterval: 0.05
+        )
+        expiringModel.reload()
+        expiringModel.query = "old"
+        expiringModel.setContentKindFilter(.text)
+        expiringModel.setFavoritesOnly(true) // no favorites in fixtures → empty list
+        expiringModel.reload()
+        XCTAssertTrue(expiringModel.snippets.isEmpty)
+
+        try await Task.sleep(nanoseconds: 300_000_000)
+
+        XCTAssertEqual(expiringModel.query, "")
+        XCTAssertNil(expiringModel.sourceAppFilter)
+        XCTAssertFalse(expiringModel.favoritesOnly)
+        XCTAssertEqual(expiringModel.contentKindFilter, .all)
+        XCTAssertEqual(expiringModel.snippets.map(\.textBody), ["new", "middle", "old"])
+    }
+
+    func testStructuredFiltersAutoResetWithoutQuery() async throws {
+        let expiringModel = HistoryViewModel(
+            store: store,
+            pasteEngine: PasteEngine(store: store),
+            filterAutoResetInterval: 0.05
+        )
+        expiringModel.reload()
+        expiringModel.setFavoritesOnly(true)
+        expiringModel.reload()
+        XCTAssertTrue(expiringModel.snippets.isEmpty)
+
+        try await Task.sleep(nanoseconds: 300_000_000)
+
+        XCTAssertFalse(expiringModel.favoritesOnly)
+        XCTAssertEqual(expiringModel.snippets.map(\.textBody), ["new", "middle", "old"])
+    }
+
+    func testSearchQueryAutoClearReschedulesOnEachEdit() async throws {
+        let expiringModel = HistoryViewModel(
+            store: store,
+            pasteEngine: PasteEngine(store: store),
+            filterAutoResetInterval: 0.2
+        )
+        expiringModel.query = "ol"
+        try await Task.sleep(nanoseconds: 100_000_000)
+        expiringModel.query = "old"
+        try await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(expiringModel.query, "old")
+
+        try await Task.sleep(nanoseconds: 250_000_000)
+        XCTAssertEqual(expiringModel.query, "")
+    }
+
+    func testManuallyClearedSearchStaysCleared() async throws {
+        let expiringModel = HistoryViewModel(
+            store: store,
+            pasteEngine: PasteEngine(store: store),
+            filterAutoResetInterval: 0.05
+        )
+        expiringModel.query = "old"
+        expiringModel.query = ""
+        try await Task.sleep(nanoseconds: 150_000_000)
+        XCTAssertEqual(expiringModel.query, "")
+    }
+
     func testSelectLatestRequestsScrollWhenFirstSnippetIsAlreadySelected() {
         XCTAssertEqual(model.selectedID, model.snippets.first?.id)
         let tokenBefore = model.latestScrollToken

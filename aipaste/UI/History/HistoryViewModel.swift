@@ -10,7 +10,12 @@ final class HistoryViewModel: ObservableObject {
     typealias ThumbnailLoader = @Sendable (Snippet) -> Data?
 
     @Published var snippets: [Snippet] = []
-    @Published var query: String = ""
+    /// Search text; self-clears with all other filters after
+    /// `filterAutoResetInterval` idle seconds so a stale filtered view never
+    /// greets the next hotkey open.
+    @Published var query: String = "" {
+        didSet { scheduleFilterAutoReset() }
+    }
     /// Exact source app display name; `nil` means all apps.
     @Published var sourceAppFilter: String?
     /// When true, only pinned favorites are listed.
@@ -40,6 +45,10 @@ final class HistoryViewModel: ObservableObject {
     private let thumbnailLoader: ThumbnailLoader
     private var statusResetTask: Task<Void, Never>?
     private var thumbnailLoadTasks: [String: Task<Void, Never>] = [:]
+    /// Idle seconds before the whole filtered view (search + quick filters)
+    /// resets to the default state; keeps ticking while the panel is hidden.
+    private let filterAutoResetInterval: TimeInterval
+    private var filterAutoResetTask: Task<Void, Never>?
 
     private var selectedIndex: Int? {
         guard let selectedID else { return nil }
@@ -83,11 +92,13 @@ final class HistoryViewModel: ObservableObject {
         store: SnippetStore,
         pasteEngine: PasteEngine,
         theme: WorkbenchTheme = .systemGlass,
-        thumbnailLoader: ThumbnailLoader? = nil
+        thumbnailLoader: ThumbnailLoader? = nil,
+        filterAutoResetInterval: TimeInterval = 180
     ) {
         self.theme = theme
         self.store = store
         self.pasteEngine = pasteEngine
+        self.filterAutoResetInterval = filterAutoResetInterval
         self.thumbnailLoader = thumbnailLoader ?? { snippet in
             guard let data = try? store.mediaData(for: snippet) else {
                 return nil
@@ -129,18 +140,22 @@ final class HistoryViewModel: ObservableObject {
     func setSourceAppFilter(_ name: String?) {
         let normalized = name?.trimmingCharacters(in: .whitespacesAndNewlines)
         sourceAppFilter = (normalized?.isEmpty == false) ? normalized : nil
+        scheduleFilterAutoReset()
     }
 
     func setFavoritesOnly(_ enabled: Bool) {
         favoritesOnly = enabled
+        scheduleFilterAutoReset()
     }
 
     func setContentKindFilter(_ filter: SnippetKindFilter) {
         contentKindFilter = filter
+        scheduleFilterAutoReset()
     }
 
     func toggleFavoritesFilter() {
         favoritesOnly.toggle()
+        scheduleFilterAutoReset()
     }
 
     /// Clears search text, source-app, favorites-only, and content-type filters.
@@ -153,12 +168,35 @@ final class HistoryViewModel: ObservableObject {
         sourceAppFilter = nil
         favoritesOnly = false
         contentKindFilter = .all
+        scheduleFilterAutoReset()
     }
 
     /// Clears only the conditions exposed by `HistoryFilterPopover`.
     func clearPopoverFilters() {
         sourceAppFilter = nil
         contentKindFilter = .all
+        scheduleFilterAutoReset()
+    }
+
+    /// Restarts the idle countdown on every filter interaction; a fully
+    /// default state stops it.
+    private func scheduleFilterAutoReset() {
+        filterAutoResetTask?.cancel()
+        guard hasActiveFilters else { return }
+        let interval = filterAutoResetInterval
+        filterAutoResetTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            self?.resetExpiredFilters()
+        }
+    }
+
+    /// Idle expiry: drop every filter and re-list the unfiltered history.
+    private func resetExpiredFilters() {
+        guard hasActiveFilters else { return }
+        query = ""
+        clearStructuredFilters()
+        reload()
     }
 
     func selectPrevious() {
