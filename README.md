@@ -114,6 +114,7 @@ Skins change the workbench and Settings chrome. They do not alter stored clipboa
 
 ## Recent changes
 
+- **Latest-first duplicates:** re-copying content that already exists in history moves that card to the leftmost — including copies made from the gallery itself (**⌘C** or paste), not just copies from other apps.
 - **Contextual gallery navigation:** show a quiet **Back to Latest** glass capsule only after scrolling away from the newest card, while retaining the native macOS horizontal scroll indicator.
 - **Single-layer quick filters:** keep Favorites Only as a one-click toolbar star, and show content type plus a direct two-column source-app list in one native popover without nested menus.
 - **Workbench toolbar:** keep the search/filter cluster centered; stop the overflow `···` menu from stretching on older macOS (e.g. Ventura).

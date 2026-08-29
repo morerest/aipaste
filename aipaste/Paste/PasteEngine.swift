@@ -51,6 +51,9 @@ final class PasteEngine {
             pasteboardSnapshot: snapshot,
             gate: gate
         )
+        // The board now holds this snippet, i.e. it was just "copied" —
+        // move its card to the front exactly like an external re-copy dedup.
+        try store.touch(id: snippet.id)
 
         if mode == .copyOnly {
             return .copiedOnly(reason: .modeCopyOnly)

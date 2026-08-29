@@ -43,6 +43,21 @@ final class SnippetStoreTests: XCTestCase {
         XCTAssertGreaterThan(list[0].updatedAt, first.updatedAt)
     }
 
+    func testTouchRefreshesUpdatedAtAndMovesToFront() throws {
+        let older = Snippet.makeText(body: "older", hash: "touch-older", updatedAt: Date(timeIntervalSince1970: 1000))
+        let newer = Snippet.makeText(body: "newer", hash: "touch-newer", updatedAt: Date(timeIntervalSince1970: 2000))
+        try store.upsert(older)
+        try store.upsert(newer)
+        XCTAssertEqual(try store.list(query: nil, limit: 10).map(\.textBody), ["newer", "older"])
+
+        let touchedAt = Date(timeIntervalSince1970: 3000)
+        try store.touch(id: older.id, date: touchedAt)
+
+        let list = try store.list(query: nil, limit: 10)
+        XCTAssertEqual(list.map(\.textBody), ["older", "newer"])
+        XCTAssertEqual(list[0].updatedAt, touchedAt)
+    }
+
     func testSearchByPreview() throws {
         try store.upsert(Snippet.makeText(body: "alpha one", hash: "a"))
         try store.upsert(Snippet.makeText(body: "beta two", hash: "b"))

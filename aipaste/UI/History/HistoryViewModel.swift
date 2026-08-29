@@ -215,6 +215,14 @@ final class HistoryViewModel: ObservableObject {
         guard let id = selectedID, let snippet = snippets.first(where: { $0.id == id }) else { return }
         do {
             _ = try pasteEngine.perform(snippet, mode: .copyOnly)
+            // The copied card is now the latest — re-list so it sits leftmost,
+            // then anchor the gallery to it like an explicit "Back to Latest".
+            // Favorites ordering is pin-time based, so only scroll when the
+            // card actually became the first row.
+            reload()
+            if snippets.first?.id == id {
+                selectLatest()
+            }
             showStatus(s.statusCopied)
         } catch {
             showStatus(s.displayError(error), duration: 3.0)

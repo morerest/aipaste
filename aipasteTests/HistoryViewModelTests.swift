@@ -52,6 +52,20 @@ final class HistoryViewModelTests: XCTestCase {
         XCTAssertEqual(model.latestScrollToken, tokenBefore &+ 1)
     }
 
+    func testCopySelectedMovesCardToLeftmostAndScrollsToIt() throws {
+        // setUp list order: new / middle / old — select the oldest card.
+        model.selectNext()
+        model.selectNext()
+        let copiedID = try XCTUnwrap(model.selectedID)
+        let tokenBefore = model.latestScrollToken
+
+        model.copySelected()
+
+        XCTAssertEqual(model.snippets.first?.textBody, "old")
+        XCTAssertEqual(model.selectedID, copiedID)
+        XCTAssertEqual(model.latestScrollToken, tokenBefore &+ 1)
+    }
+
     func testSelectLatestRequestsScrollWhenFirstSnippetIsAlreadySelected() {
         XCTAssertEqual(model.selectedID, model.snippets.first?.id)
         let tokenBefore = model.latestScrollToken

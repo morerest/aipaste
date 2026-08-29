@@ -20,6 +20,23 @@ final class SnippetStore: @unchecked Sendable {
         self.maxFavoriteCount = max(1, maxFavoriteCount)
     }
 
+    /// Re-marks an existing snippet as the newest copy, so `list` puts it first.
+    /// Used after app-initiated pasteboard writes (the write itself is a copy);
+    /// provenance fields stay untouched, unlike the external dedup path.
+    func touch(id: String, date: Date = Date()) throws {
+        try queue.sync {
+            try database.withStatement(
+                "UPDATE snippets SET updated_at = ? WHERE id = ?;"
+            ) { stmt in
+                sqlite3_bind_double(stmt, 1, date.timeIntervalSince1970)
+                bindText(stmt, 2, id)
+                guard sqlite3_step(stmt) == SQLITE_DONE else {
+                    throw DatabaseError.stepFailed("touch failed")
+                }
+            }
+        }
+    }
+
     func setMaxSnippetCount(_ value: Int) {
         queue.sync { maxSnippetCount = max(1, value) }
     }
