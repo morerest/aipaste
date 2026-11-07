@@ -342,6 +342,57 @@ final class HistoryViewModelTests: XCTestCase {
         )
     }
 
+    func testGalleryScrollMetricsMapsVerticalWheelToHorizontalOffset() {
+        // Precise wheel / smooth mouse: vertical delta maps 1:1 with inverted sign
+        // (wheel down < 0 advances right > 0; wheel up > 0 returns left < 0).
+        XCTAssertEqual(
+            GalleryScrollMetrics.horizontalScrollDelta(
+                scrollingDeltaX: 0,
+                scrollingDeltaY: -24,
+                hasPreciseScrollingDeltas: true
+            ),
+            24
+        )
+        XCTAssertEqual(
+            GalleryScrollMetrics.horizontalScrollDelta(
+                scrollingDeltaX: 0,
+                scrollingDeltaY: 18,
+                hasPreciseScrollingDeltas: true
+            ),
+            -18
+        )
+
+        // Discrete notched mouse wheel scales by line step.
+        XCTAssertEqual(
+            GalleryScrollMetrics.horizontalScrollDelta(
+                scrollingDeltaX: 0,
+                scrollingDeltaY: -2,
+                hasPreciseScrollingDeltas: false,
+                lineScroll: 10
+            ),
+            96
+        )
+
+        // Slow single-notch physical wheel where integer scrollingDeltaY is 0 and deltaY is ±0.1.
+        let slowNotchDelta = GalleryScrollMetrics.horizontalScrollDelta(
+            scrollingDeltaX: 0,
+            scrollingDeltaY: 0,
+            deltaY: -0.1,
+            hasPreciseScrollingDeltas: false,
+            lineScroll: 10
+        )
+        XCTAssertEqual(try XCTUnwrap(slowNotchDelta), 48, accuracy: 0.001)
+
+        // Dominant horizontal scroll is left to native NSScrollView handling.
+        XCTAssertNil(
+            GalleryScrollMetrics.horizontalScrollDelta(
+                scrollingDeltaX: -30,
+                scrollingDeltaY: -5,
+                hasPreciseScrollingDeltas: true
+            )
+        )
+    }
+
     func testClearAllFiltersResetsQueryAppAndFavorites() throws {
         try store.setPinned(id: model.snippets[0].id, pinned: true)
         model.query = "body"

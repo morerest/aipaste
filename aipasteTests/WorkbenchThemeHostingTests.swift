@@ -83,6 +83,58 @@ final class WorkbenchThemeHostingTests: XCTestCase {
         XCTAssertGreaterThan(reportedOffsets.last ?? 0, 70)
     }
 
+    func testVerticalMouseWheelScrollsHorizontalGalleryAndClampsBounds() throws {
+        var reportedOffsets: [CGFloat] = []
+        let view = ScrollView(.horizontal) {
+            HStack {
+                Color.clear.frame(width: 2_000, height: 100)
+            }
+            .background {
+                GalleryScrollOffsetObserver {
+                    reportedOffsets.append($0)
+                }
+            }
+        }
+
+        let hosting = NSHostingController(rootView: view)
+        hosting.loadView()
+        hosting.view.frame = NSRect(x: 0, y: 0, width: 300, height: 100)
+        let window = NSWindow(
+            contentRect: hosting.view.frame,
+            styleMask: .borderless,
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = hosting.view
+        hosting.view.layoutSubtreeIfNeeded()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+
+        let scrollView = try XCTUnwrap(firstScrollView(in: hosting.view))
+        let observerView = try XCTUnwrap(firstObservationView(in: hosting.view))
+
+        // Discrete wheel down 2 notches -> scrolls right by 96pt.
+        XCTAssertTrue(
+            observerView.scrollHorizontally(
+                scrollingDeltaX: 0,
+                scrollingDeltaY: -2,
+                hasPreciseScrollingDeltas: false
+            )
+        )
+        RunLoop.current.run(until: Date().addingTimeInterval(0.02))
+        XCTAssertEqual(scrollView.contentView.bounds.origin.x, 96, accuracy: 0.5)
+        XCTAssertEqual(reportedOffsets.last ?? 0, 96, accuracy: 0.5)
+
+        // Wheel up past leading edge clamps at 0.
+        XCTAssertTrue(
+            observerView.scrollHorizontally(
+                scrollingDeltaX: 0,
+                scrollingDeltaY: 10,
+                hasPreciseScrollingDeltas: false
+            )
+        )
+        XCTAssertEqual(scrollView.contentView.bounds.origin.x, 0, accuracy: 0.5)
+    }
+
     func testEveryThemeCanHostWorkbenchChromeAndHistory() throws {
         let tempRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("aipaste-theme-host-\(UUID().uuidString)", isDirectory: true)
@@ -221,5 +273,12 @@ final class WorkbenchThemeHostingTests: XCTestCase {
             return scrollView
         }
         return view.subviews.lazy.compactMap(firstScrollView(in:)).first
+    }
+
+    private func firstObservationView(in view: NSView) -> GalleryScrollObservationView? {
+        if let observationView = view as? GalleryScrollObservationView {
+            return observationView
+        }
+        return view.subviews.lazy.compactMap(firstObservationView(in:)).first
     }
 }
